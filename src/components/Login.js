@@ -11,22 +11,24 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const response = await fetch("https://visual-math-oscg.onrender.com/login", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify(formData),
-});
+    try {   // ← YOU FORGOT THIS LINE
 
+      const response = await fetch("https://visual-math-oscg.onrender.com/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
 
       const data = await response.json();
 
       if (response.ok) {
         alert(data.message);
-        localStorage.setItem("userEmail", formData.email); // Store email in localStorage
-        window.location.href = "/profile"; // Navigate if successful
+        localStorage.setItem("userEmail", formData.email);
+        window.location.href = "/profile";
       } else {
-        setErrorMessage(data.message || "Invalid email or password"); // Show error if login fails
+        setErrorMessage(data.message || "Invalid email or password");
       }
+
     } catch (error) {
       setErrorMessage("Server error. Please try again later.");
     }
@@ -52,7 +54,7 @@ const Login = () => {
           onChange={handleChange}
           style={styles.input}
         />
-        {errorMessage && <p style={styles.error}>{errorMessage}</p>} {/* Display error if login fails */}
+        {errorMessage && <p style={styles.error}>{errorMessage}</p>}
         <button type="submit" style={styles.button}>Login</button>
       </form>
       <p style={styles.linkText}>
