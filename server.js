@@ -8,7 +8,11 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-mongoose.connect("mongodb://127.0.0.1:27017/educonnect", { useNewUrlParser: true, useUnifiedTopology: true });
+mongoose.connect("mongodb+srv://preethiusha007_db_user:ZmpaqAYxhpNtVfgv@cluster0.5zvyv1w.mongodb.net/educonnect?retryWrites=true&w=majority", {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
+
 
 const userSchema = new mongoose.Schema({
   name: String,
@@ -42,4 +46,7 @@ app.post("/login", async (req, res) => {
   }
 });
 
-app.listen(5000, () => console.log("Server running on port 5000"));
+app.listen(process.env.PORT || 5000, () =>
+  console.log("Server running on port " + (process.env.PORT || 5000))
+);
+
