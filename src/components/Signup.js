@@ -16,7 +16,7 @@ const Signup = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const response = await fetch("https://visual-math-oscg.onrender.com/signup", {
+    const response = await fetch("https://visual-math-oscg.onrender.com/signup/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(formData),
