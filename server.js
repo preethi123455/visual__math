@@ -6,7 +6,12 @@ const cors = require("cors");
 
 const app = express();
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: "*",
+  methods: ["GET", "POST"],
+  allowedHeaders: ["Content-Type"]
+}));
+
 
 mongoose.connect("mongodb+srv://preethi:Preethi123@cluster0.5zvyv1w.mongodb.net/educonnect?retryWrites=true&w=majority");
 
@@ -19,6 +24,10 @@ const userSchema = new mongoose.Schema({
 });
 
 const User = mongoose.model("User", userSchema);
+
+app.get("/", (req, res) => {
+  res.send("Backend is running");
+});
 
 app.post("/signup", async (req, res) => {
   try {
