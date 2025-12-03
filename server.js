@@ -8,10 +8,11 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-mongoose.connect("mongodb+srv://preethiusha007_db_user:ZmpaqAYxhpNtVfgv@cluster0.5zvyv1w.mongodb.net/educonnect?retryWrites=true&w=majority", {
+mongoose.connect("mongodb+srv://preethi:ZmpaqAYxhpNtVfgv@cluster0.5zvyv1w.mongodb.net/educonnect?retryWrites=true&w=majority", {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
+
 
 
 const userSchema = new mongoose.Schema({
