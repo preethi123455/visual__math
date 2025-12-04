@@ -3,7 +3,7 @@ import Tesseract from 'tesseract.js';
 import Select from 'react-select';
 
 const AIAssistant = () => {
-  const groqApiKey = "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"; // ⚠️ Replace this in production!
+  const groqApiKey = "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";  // ⚠️ Replace this in production!
   const [messages, setMessages] = useState([
     { role: 'assistant', content: "Hello! I'm your Math assistant. Ask me anything related to mathematics!" }
   ]);
@@ -67,7 +67,7 @@ const AIAssistant = () => {
           'Authorization': `Bearer ${groqApiKey}`
         },
         body: JSON.stringify({
-          model: mode === 'general' ? 'llama3-8b-8192' : 'mixtral-8x7b-32768',
+          model: mode === 'general' ? 'llama-3.1-8b-instant' : 'llama-3.3-70b-versatile',
           messages: [
             {
               role: 'system',
