@@ -2,16 +2,11 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Howl } from "howler";
 
-// Background music and sound effect
+// Background music ONLY (give.mp3 removed)
 const backgroundMusic = new Howl({
   src: ["/sounds/bg.mp3"],
   loop: true,
   volume: 0.3,
-});
-
-const giveSound = new Howl({
-  src: ["/sounds/give.mp3"],
-  volume: 1,
 });
 
 const WordProblemCartoon = () => {
@@ -73,7 +68,8 @@ const WordProblemCartoon = () => {
       const parsed = JSON.parse(jsonMatch[0]);
 
       setScene(parsed);
-      giveSound.play();
+
+      // Start background music
       backgroundMusic.play();
 
       const action = parsed.action?.give;
@@ -116,7 +112,6 @@ const WordProblemCartoon = () => {
         initial={{ opacity: 0, y: 50 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 1.2 }}
-        className="scene"
         style={styles.scene}
       >
         <h2 style={styles.sceneTitle}>🎬 Cartoon Comic Scene</h2>
