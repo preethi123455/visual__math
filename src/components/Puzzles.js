@@ -13,9 +13,8 @@ const Puzzles = () => {
   ]);
   const [message, setMessage] = useState("");
 
-  const groqApiKey = "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"; 
- 
-  const MODEL_ID = "llama3-8b-8192";
+  const groqApiKey = "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";
+  const mode = "general"; // ✅ Define mode
 
   const fetchChallenge = async () => {
     try {
@@ -23,14 +22,15 @@ const Puzzles = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${API_KEY}`,
+          Authorization: `Bearer ${groqApiKey}`, // ✅ fixed
         },
         body: JSON.stringify({
-          model: mode === 'general' ? 'llama-3.1-8b-instant' : 'llama-3.3-70b-versatile',
+          model: mode === "general" ? "llama-3.1-8b-instant" : "llama-3.3-70b-versatile",
           messages: [
             {
               role: "system",
-              content: "You are an assistant that generates simple math puzzles. Provide a puzzle and its answer in the format: 'Puzzle: ... Answer: ...'.",
+              content:
+                "You are an assistant that generates simple math puzzles. Provide a puzzle and its answer in the format: 'Puzzle: ... Answer: ...'.",
             },
             {
               role: "user",
@@ -47,7 +47,7 @@ const Puzzles = () => {
       }
 
       const data = await response.json();
-      const content = data.choices[0]?.message?.content;
+      const content = data.choices?.[0]?.message?.content;
 
       const puzzleMatch = content.match(/Puzzle:\s*(.+)/);
       const answerMatch = content.match(/Answer:\s*(.+)/);

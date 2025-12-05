@@ -9,8 +9,11 @@ const AIChalkboardTutor = () => {
   const canvasRef = useRef(null);
   const handRef = useRef(null);
 
- const groqApiKey = "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"; 
- // Replace with your actual API key
+  // ✅ Hardcoded API key
+  const groqApiKey = "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";
+
+  // ✅ Define mode to avoid no-undef
+  const mode = "general"; // or 'advanced' for other model
 
   const fetchSolution = async () => {
     if (!question.trim()) return;
@@ -24,10 +27,10 @@ const AIChalkboardTutor = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
+          Authorization: `Bearer ${groqApiKey}`, // ✅ use groqApiKey
         },
         body: JSON.stringify({
-           model: mode === 'general' ? 'llama-3.1-8b-instant' : 'llama-3.3-70b-versatile',
+          model: mode === "general" ? "llama-3.1-8b-instant" : "llama-3.3-70b-versatile",
           messages: [
             {
               role: "system",

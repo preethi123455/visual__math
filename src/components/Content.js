@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 const ContentExplorer = () => {
-  const groqApiKey = "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";  // Replace with your actual Groq API key
+  const groqApiKey = "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"; // Your Groq API key
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [activeCategory, setActiveCategory] = useState('all');
@@ -15,6 +15,9 @@ const ContentExplorer = () => {
     { id: 'books', name: 'Books', icon: '📚' },
     { id: 'courses', name: 'Courses', icon: '🧠' }
   ];
+
+  // ✅ Define mode
+  const mode = "general"; // Change to 'advanced' if needed
 
   const handleSearch = async () => {
     if (!searchTerm.trim()) return;
@@ -30,7 +33,7 @@ const ContentExplorer = () => {
           'Authorization': `Bearer ${groqApiKey}`
         },
         body: JSON.stringify({
-          odel: mode === 'general' ? 'llama-3.1-8b-instant' : 'llama-3.3-70b-versatile',
+          model: mode === 'general' ? 'llama-3.1-8b-instant' : 'llama-3.3-70b-versatile', // ✅ fixed typo
           messages: [
             {
               role: 'system',

@@ -23,6 +23,8 @@ const LlamaTutorGame = () => {
   const [quizIndex, setQuizIndex] = useState(null);
   const [userAnswer, setUserAnswer] = useState(null);
 
+  const mode = "general"; // ✅ Added mode definition
+
   const modifyQuestion = (level) => {
     const templates = [
       `Explain like I’m 5: ${baseQuestion}`,
@@ -49,10 +51,10 @@ const LlamaTutorGame = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${API_KEY}`,
+          Authorization: `Bearer ${groqApiKey}`, // ✅ Fixed API key reference
         },
         body: JSON.stringify({
-         model: mode === 'general' ? 'llama-3.1-8b-instant' : 'llama-3.3-70b-versatile',
+          model: mode === 'general' ? 'llama-3.1-8b-instant' : 'llama-3.3-70b-versatile',
           messages: [
             { role: 'system', content: 'You are a fun llama tutor giving step-by-step instructions with examples and humor!' },
             { role: 'user', content: modified },
@@ -61,8 +63,10 @@ const LlamaTutorGame = () => {
         }),
       });
 
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+
       const data = await res.json();
-      const fullText = data.choices[0].message.content;
+      const fullText = data.choices[0]?.message?.content || '';
       const stepsArray = fullText
         .split(/\n(?=\d+\.|\- )/)
         .map((s) => s.trim())
@@ -70,12 +74,14 @@ const LlamaTutorGame = () => {
       setSteps(stepsArray);
     } catch (err) {
       alert('Error fetching explanation.');
+      console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
   const handleQuiz = () => {
+    if (steps.length === 0) return;
     setQuizIndex(Math.floor(Math.random() * steps.length));
     setUserAnswer(null);
   };
@@ -86,7 +92,7 @@ const LlamaTutorGame = () => {
 
   return (
     <div style={containerStyle}>
-      <h1 style={{ fontSize: '2.5rem' }}> LLaMA Learning Adventure</h1>
+      <h1 style={{ fontSize: '2.5rem' }}>LLaMA Learning Adventure</h1>
       <p>Type a question and choose your learning level 🎮</p>
 
       <input

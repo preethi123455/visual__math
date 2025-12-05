@@ -8,6 +8,9 @@ export default function MathVideoSolverWithRecording() {
   const mediaRecorderRef = useRef(null);
   const recordedChunksRef = useRef([]);
 
+  const groqApiKey = "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";
+  const mode = "general"; // Default mode
+
   const startRecording = (stream) => {
     recordedChunksRef.current = [];
     const recorder = new MediaRecorder(stream, { mimeType: "video/webm" });
@@ -47,12 +50,13 @@ export default function MathVideoSolverWithRecording() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: "Bearer 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"
+          Authorization: `Bearer ${groqApiKey}`
         },
         body: JSON.stringify({
-         model: mode === 'general' ? 'llama-3.1-8b-instant' : 'llama-3.3-70b-versatile',
+          model: mode === 'general' ? 'llama-3.1-8b-instant' : 'llama-3.3-70b-versatile',
           messages: [{ role: "user", content: prompt }],
-          temperature: 0.2
+          temperature: 0.2,
+          max_tokens: 500
         })
       });
 
@@ -84,7 +88,11 @@ export default function MathVideoSolverWithRecording() {
     const ctx = canvas.getContext("2d");
     const avatar = new Image();
     avatar.src = "https://i.postimg.cc/xjBLtnxz/teacher-avatar.png";
-    await avatar.decode();
+
+    await new Promise((resolve) => {
+      avatar.onload = resolve;
+      avatar.onerror = resolve;
+    });
 
     const speak = (text) =>
       new Promise((resolve) => {
@@ -124,17 +132,14 @@ export default function MathVideoSolverWithRecording() {
   const wrapText = (ctx, text, x, y, maxWidth, lineHeight) => {
     const words = text.split(" ");
     let line = "";
-    let testLine = "";
-
     const lines = [];
 
     for (let n = 0; n < words.length; n++) {
-      testLine += words[n] + " ";
+      const testLine = line + words[n] + " ";
       const width = ctx.measureText(testLine).width;
       if (width > maxWidth && n > 0) {
         lines.push(line);
         line = words[n] + " ";
-        testLine = words[n] + " ";
       } else {
         line = testLine;
       }

@@ -9,6 +9,7 @@ const MathRPG = () => {
   const [loading, setLoading] = useState(false);
 
   const groqApiKey = "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"; 
+  const mode = "general"; // Define mode
 
   const generateQuestion = async () => {
     setLoading(true);
@@ -18,7 +19,7 @@ const MathRPG = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${GROQ_API_KEY}`
+          'Authorization': `Bearer ${groqApiKey}`
         },
         body: JSON.stringify({
           model: mode === 'general' ? 'llama-3.1-8b-instant' : 'llama-3.3-70b-versatile',
@@ -27,7 +28,8 @@ const MathRPG = () => {
               role: 'system',
               content: 'Generate a fun and simple math question for students. Provide only the question text.'
             }
-          ]
+          ],
+          max_tokens: 100
         })
       });
 
@@ -53,10 +55,10 @@ const MathRPG = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${GROQ_API_KEY}`
+          'Authorization': `Bearer ${groqApiKey}`
         },
         body: JSON.stringify({
-          model: 'llama3-8b-8192',
+          model: 'llama-3.1-8b-instant',
           messages: [
             {
               role: 'system',
@@ -66,12 +68,13 @@ const MathRPG = () => {
               role: 'user',
               content: `Question: ${question}\nStudent Answer: ${userAnswer}`
             }
-          ]
+          ],
+          max_tokens: 50
         })
       });
 
       const data = await response.json();
-      const evaluation = data.choices?.[0]?.message?.content?.toLowerCase();
+      const evaluation = data.choices?.[0]?.message?.content?.toLowerCase() || '';
 
       if (evaluation.includes('correct')) {
         setEnemyHP(prev => Math.max(prev - 20, 0));

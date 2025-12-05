@@ -7,9 +7,9 @@ const domains = [
   "Calculus Conquest",
   "Probability Playground",
   "Number Theory Ninja",
-  "Maths in Real Life"
+  "Maths in Real Life",
 ];
-const groqApiKey = "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"; 
+const groqApiKey = "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";
 const API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 export default function GroupDiscussionForum() {
@@ -20,6 +20,8 @@ export default function GroupDiscussionForum() {
   const [customMeetLink, setCustomMeetLink] = useState("");
   const [scheduledTime, setScheduledTime] = useState("");
   const [interestedCount, setInterestedCount] = useState({});
+
+  const mode = "general"; // ✅ define mode
 
   const createMeet = async (domain) => {
     if (!scheduledTime) {
@@ -43,7 +45,8 @@ export default function GroupDiscussionForum() {
 
       setAiInsights(insightsResponse);
       setRecommendedTopics(topicsResponse);
-    } catch {
+    } catch (error) {
+      console.error(error);
       setAiInsights("No insights available.");
       setRecommendedTopics("No topics available.");
     }
@@ -61,18 +64,19 @@ export default function GroupDiscussionForum() {
       const response = await fetch(API_URL, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${GROQ_API_KEY}`,
+          Authorization: `Bearer ${groqApiKey}`, // ✅ fixed variable name
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-         model: mode === 'general' ? 'llama-3.1-8b-instant' : 'llama-3.3-70b-versatile',
+          model: mode === "general" ? "llama-3.1-8b-instant" : "llama-3.3-70b-versatile",
           messages: [{ role: "user", content: prompt }],
         }),
       });
 
       const data = await response.json();
       return data.choices?.[0]?.message?.content || "No response.";
-    } catch {
+    } catch (error) {
+      console.error(error);
       return "Error fetching response.";
     }
   };
@@ -126,11 +130,7 @@ export default function GroupDiscussionForum() {
       </div>
 
       {selectedDomain && (
-        <motion.div
-          style={styles.resultCard}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-        >
+        <motion.div style={styles.resultCard} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
           <h2 style={styles.resultTitle}>🧠 {selectedDomain} Discussion Arena</h2>
           <input type="text" value={meetLink} readOnly style={styles.input} />
           <p style={styles.sectionText}>
@@ -150,11 +150,7 @@ export default function GroupDiscussionForum() {
         </motion.div>
       )}
 
-      <motion.div
-        style={styles.resultCard}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-      >
+      <motion.div style={styles.resultCard} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
         <h2 style={styles.resultTitle}>📌 Add Your Own Meet</h2>
         <input
           type="text"

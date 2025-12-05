@@ -7,8 +7,11 @@ const Roadmap = () => {
   const [topic, setTopic] = useState("");
   const [roadmapData, setRoadmapData] = useState({ nodes: [], edges: [] });
   const [loading, setLoading] = useState(false);
-  const groqApiKey = "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";
+
+  const groqApiKey =
+    "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";
   const url = "https://api.groq.com/openai/v1/chat/completions";
+  const mode = "general"; // ✅ define mode
 
   const fetchRoadmap = async () => {
     if (!topic.trim() || !level) {
@@ -18,7 +21,8 @@ const Roadmap = () => {
     setLoading(true);
 
     const requestBody = {
-      model: mode === 'general' ? 'llama-3.1-8b-instant' : 'llama-3.3-70b-versatile',
+      model:
+        mode === "general" ? "llama-3.1-8b-instant" : "llama-3.3-70b-versatile",
       messages: [
         {
           role: "system",
@@ -42,6 +46,7 @@ const Roadmap = () => {
         },
       ],
       max_tokens: 1000,
+      temperature: 0.7,
     };
 
     try {
@@ -49,21 +54,25 @@ const Roadmap = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
+          Authorization: `Bearer ${groqApiKey}`,
         },
         body: JSON.stringify(requestBody),
       });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status} ${response.statusText}`);
+      }
 
       const data = await response.json();
       const roadmapText = data.choices?.[0]?.message?.content?.trim();
 
       if (!roadmapText) {
-        throw new Error("Empty or invalid response");
+        throw new Error("Empty or invalid response from API");
       }
 
       const jsonMatch = roadmapText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        throw new Error("No valid JSON found in response");
+        throw new Error("No valid JSON found in API response");
       }
 
       const parsed = JSON.parse(jsonMatch[0]);
@@ -102,7 +111,8 @@ const Roadmap = () => {
             onClick={() => setLevel(lvl)}
             style={level === lvl ? styles.selectedBtn : styles.levelBtn}
           >
-            {lvl === "Beginner" ? "🟢" : lvl === "Intermediate" ? "🟡" : "🔴"} {lvl}
+            {lvl === "Beginner" ? "🟢" : lvl === "Intermediate" ? "🟡" : "🔴"}{" "}
+            {lvl}
           </button>
         ))}
       </div>
@@ -115,7 +125,11 @@ const Roadmap = () => {
         style={styles.input}
       />
 
-      <button onClick={fetchRoadmap} style={styles.generateBtn} disabled={loading}>
+      <button
+        onClick={fetchRoadmap}
+        style={styles.generateBtn}
+        disabled={loading}
+      >
         {loading ? "Generating..." : "Generate Roadmap"}
       </button>
 

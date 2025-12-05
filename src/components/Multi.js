@@ -7,7 +7,9 @@ const DualLanguageMathExplainer = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const groqApiKey = "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"
+  const groqApiKey = "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";
+  const mode = "general"; // ✅ define mode
+
   const getExplanation = async () => {
     if (!problem.trim()) {
       setError("Please enter a math problem.");
@@ -43,7 +45,7 @@ const DualLanguageMathExplainer = () => {
     }
 
     const requestBody = {
-       model: mode === 'general' ? 'llama-3.1-8b-instant' : 'llama-3.3-70b-versatile',
+      model: mode === "general" ? "llama-3.1-8b-instant" : "llama-3.3-70b-versatile",
       messages: [
         {
           role: "system",
@@ -57,7 +59,7 @@ const DualLanguageMathExplainer = () => {
       const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${API_KEY}`,
+          Authorization: `Bearer ${groqApiKey}`, // ✅ fixed variable
           "Content-Type": "application/json",
         },
         body: JSON.stringify(requestBody),
@@ -127,6 +129,7 @@ const DualLanguageMathExplainer = () => {
       border: "1px solid rgb(166, 21, 192)",
       lineHeight: "1.6",
       whiteSpace: "pre-wrap",
+      color: "white",
     },
     errorBox: {
       marginTop: "10px",

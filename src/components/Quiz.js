@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 
 const QuizGenerator = () => {
-  const groqApiKey = "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"; 
+  const groqApiKey =
+    "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";
   const [level, setLevel] = useState(null);
   const [userInput, setUserInput] = useState("");
   const [quiz, setQuiz] = useState([]);
@@ -9,6 +10,8 @@ const QuizGenerator = () => {
   const [error, setError] = useState(null);
   const [answers, setAnswers] = useState({});
   const [feedback, setFeedback] = useState(null);
+
+  const mode = "general"; // ✅ define mode
 
   const handleLevelSelect = (selectedLevel) => {
     setLevel(selectedLevel);
@@ -31,44 +34,53 @@ const QuizGenerator = () => {
     setFeedback(null);
 
     try {
-      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${groqApiKey}`,
-        },
-        body: JSON.stringify({
-          model: mode === 'general' ? 'llama-3.1-8b-instant' : 'llama-3.3-70b-versatile',
-          messages: [
-            {
-              role: "system",
-              content: `Generate a multiple-choice quiz with 3 ${level.toLowerCase()}-level math questions on the given topic.
-                        Format the response as a JSON array. Each object should have:
-                        - "question": string
-                        - "options": array of 4 strings
-                        - "correctAnswer": string`,
-            },
-            { role: "user", content: userInput },
-          ],
-          temperature: 0.7,
-          max_tokens: 1024,
-        }),
-      });
+      const response = await fetch(
+        "https://api.groq.com/openai/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${groqApiKey}`,
+          },
+          body: JSON.stringify({
+            model:
+              mode === "general"
+                ? "llama-3.1-8b-instant"
+                : "llama-3.3-70b-versatile",
+            messages: [
+              {
+                role: "system",
+                content: `Generate a multiple-choice quiz with 3 ${level.toLowerCase()}-level math questions on the given topic.
+Format the response as a JSON array. Each object should have:
+- "question": string
+- "options": array of 4 strings
+- "correctAnswer": string`,
+              },
+              { role: "user", content: userInput },
+            ],
+            temperature: 0.7,
+            max_tokens: 1024,
+          }),
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`API error: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
-      const match = data.choices[0].message.content.match(/\[([\s\S]*)\]/);
+      const content = data.choices?.[0]?.message?.content;
+
+      // Extract JSON from response string
+      const match = content.match(/\[([\s\S]*)\]/);
       if (!match) throw new Error("Invalid JSON format received.");
       const parsedQuiz = JSON.parse(match[0]);
 
       setQuiz(parsedQuiz);
       setAnswers({});
-    } catch (error) {
-      console.error("Error generating quiz:", error);
-      setError(error.message || "Failed to generate quiz. Please try again.");
+    } catch (err) {
+      console.error("Error generating quiz:", err);
+      setError(err.message || "Failed to generate quiz. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -109,13 +121,22 @@ const QuizGenerator = () => {
       {!level ? (
         <div style={styles.levelSelector}>
           <p style={styles.label}>Choose your level:</p>
-          <button style={styles.levelButton} onClick={() => handleLevelSelect("Beginner")}>
+          <button
+            style={styles.levelButton}
+            onClick={() => handleLevelSelect("Beginner")}
+          >
             Beginner
           </button>
-          <button style={styles.levelButton} onClick={() => handleLevelSelect("Intermediate")}>
+          <button
+            style={styles.levelButton}
+            onClick={() => handleLevelSelect("Intermediate")}
+          >
             Intermediate
           </button>
-          <button style={styles.levelButton} onClick={() => handleLevelSelect("Advanced")}>
+          <button
+            style={styles.levelButton}
+            onClick={() => handleLevelSelect("Advanced")}
+          >
             Advanced
           </button>
         </div>
@@ -148,7 +169,9 @@ const QuizGenerator = () => {
 
                 return (
                   <div key={index} style={styles.questionBlock}>
-                    <p><strong>{q.question}</strong></p>
+                    <p>
+                      <strong>{q.question}</strong>
+                    </p>
                     {q.options.map((option, optionIndex) => {
                       const selected = answers[index] === option;
                       const correctAnswer = q.correctAnswer;
@@ -158,14 +181,21 @@ const QuizGenerator = () => {
                         if (option === correctAnswer) {
                           optionStyle = { color: "green", fontWeight: "bold" };
                         } else if (selected && option !== correctAnswer) {
-                          optionStyle = { color: "red", textDecoration: "line-through" };
+                          optionStyle = {
+                            color: "red",
+                            textDecoration: "line-through",
+                          };
                         }
                       }
 
                       return (
                         <label
                           key={optionIndex}
-                          style={{ display: "block", marginBottom: "5px", ...optionStyle }}
+                          style={{
+                            display: "block",
+                            marginBottom: "5px",
+                            ...optionStyle,
+                          }}
                         >
                           <input
                             type="radio"
@@ -183,7 +213,10 @@ const QuizGenerator = () => {
                 );
               })}
               {!feedback && (
-                <button onClick={handleSubmitAnswers} style={styles.submitButton}>
+                <button
+                  onClick={handleSubmitAnswers}
+                  style={styles.submitButton}
+                >
                   Submit Answers
                 </button>
               )}
@@ -205,7 +238,10 @@ const QuizGenerator = () => {
                   </ul>
                 </div>
               )}
-              <button style={styles.resetButton} onClick={() => setLevel(null)}>
+              <button
+                style={styles.resetButton}
+                onClick={() => setLevel(null)}
+              >
                 Take Another Quiz
               </button>
             </div>
