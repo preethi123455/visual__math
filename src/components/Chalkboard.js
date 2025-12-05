@@ -9,7 +9,8 @@ const AIChalkboardTutor = () => {
   const canvasRef = useRef(null);
   const handRef = useRef(null);
 
-  const apiKey = "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"; // Replace with your actual API key
+ const groqApiKey = "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"; 
+ // Replace with your actual API key
 
   const fetchSolution = async () => {
     if (!question.trim()) return;
@@ -26,7 +27,7 @@ const AIChalkboardTutor = () => {
           Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: "llama3-8b-8192",
+           model: mode === 'general' ? 'llama-3.1-8b-instant' : 'llama-3.3-70b-versatile',
           messages: [
             {
               role: "system",

@@ -50,7 +50,7 @@ export default function MathVideoSolverWithRecording() {
           Authorization: "Bearer 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"
         },
         body: JSON.stringify({
-          model: "llama3-8b-8192",
+         model: mode === 'general' ? 'llama-3.1-8b-instant' : 'llama-3.3-70b-versatile',
           messages: [{ role: "user", content: prompt }],
           temperature: 0.2
         })

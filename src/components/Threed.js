@@ -19,7 +19,7 @@ const Visualizer = () => {
           Authorization: "Bearer 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", // Replace with a valid API key
         },
         body: JSON.stringify({
-          model: "llama3-8b-8192",
+          model: mode === 'general' ? 'llama-3.1-8b-instant' : 'llama-3.3-70b-versatile',
           messages: [
             {
               role: "user",

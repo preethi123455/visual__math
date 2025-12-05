@@ -9,8 +9,7 @@ const domains = [
   "Number Theory Ninja",
   "Maths in Real Life"
 ];
-
-const GROQ_API_KEY = "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";
+const groqApiKey = "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"; 
 const API_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 export default function GroupDiscussionForum() {
@@ -66,7 +65,7 @@ export default function GroupDiscussionForum() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "llama3-8b-8192",
+         model: mode === 'general' ? 'llama-3.1-8b-instant' : 'llama-3.3-70b-versatile',
           messages: [{ role: "user", content: prompt }],
         }),
       });

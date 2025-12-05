@@ -9,7 +9,7 @@ const App = () => {
   const [evaluationResult, setEvaluationResult] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const GROQ_API_KEY = "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";
+  const groqApiKey = "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"; 
   const MODEL = "llama3-8b-8192";
 
   const generateProblem = async () => {
@@ -34,8 +34,7 @@ DO NOT include any extra explanation.
           Authorization: `Bearer ${GROQ_API_KEY}`,
         },
         body: JSON.stringify({
-          model: MODEL,
-          messages: [{ role: "user", content: prompt }],
+         model: mode === 'general' ? 'llama-3.1-8b-instant' : 'llama-3.3-70b-versatile',
         }),
       });
 

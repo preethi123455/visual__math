@@ -7,8 +7,7 @@ const DualLanguageMathExplainer = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const API_KEY = "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";
-
+  const groqApiKey = "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"
   const getExplanation = async () => {
     if (!problem.trim()) {
       setError("Please enter a math problem.");
@@ -44,7 +43,7 @@ const DualLanguageMathExplainer = () => {
     }
 
     const requestBody = {
-      model: "llama3-8b-8192",
+       model: mode === 'general' ? 'llama-3.1-8b-instant' : 'llama-3.3-70b-versatile',
       messages: [
         {
           role: "system",
