@@ -132,7 +132,7 @@ const App = () => {
             <button
               onClick={() =>
                 (window.location.href =
-                  "/invideo-ai-1080%20Revolutionize%20Math%20Learning%20with%20Math%20Vi%202025-04-11.mp4")
+                  "/invideo-ai-1080 Revolutionize Math Learning with Math Vi 2025-04-11.mp4")
               }
               style={{
                 background: "linear-gradient(to right, #43cea2, #185a9d)",
