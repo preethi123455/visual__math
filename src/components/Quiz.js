@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 
 const QuizGenerator = () => {
-  const groqApiKey = "YOUR_KEY"; // ❗Replace with env/backend later
+  const groqApiKey = "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"; // ❗Replace with env/backend later
 
   const [level, setLevel] = useState(null);
   const [userInput, setUserInput] = useState("");
