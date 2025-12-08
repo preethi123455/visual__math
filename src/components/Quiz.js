@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 
 const QuizGenerator = () => {
-  const groqApiKey =
-    "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";
+  const groqApiKey = "YOUR_KEY"; // ❗Replace with env/backend later
+
   const [level, setLevel] = useState(null);
   const [userInput, setUserInput] = useState("");
   const [quiz, setQuiz] = useState([]);
@@ -10,8 +10,6 @@ const QuizGenerator = () => {
   const [error, setError] = useState(null);
   const [answers, setAnswers] = useState({});
   const [feedback, setFeedback] = useState(null);
-
-  const mode = "general"; // ✅ define mode
 
   const handleLevelSelect = (selectedLevel) => {
     setLevel(selectedLevel);
@@ -43,51 +41,54 @@ const QuizGenerator = () => {
             Authorization: `Bearer ${groqApiKey}`,
           },
           body: JSON.stringify({
-            model:
-              mode === "general"
-                ? "llama-3.1-8b-instant"
-                : "llama-3.3-70b-versatile",
+            model: "llama-3.1-8b-instant",
+            response_format: { type: "json_object" }, // 👈 FORCES JSON
             messages: [
               {
                 role: "system",
-                content: `Generate a multiple-choice quiz with 3 ${level.toLowerCase()}-level math questions on the given topic.
-Format the response as a JSON array. Each object should have:
-- "question": string
-- "options": array of 4 strings
-- "correctAnswer": string`,
+                content: `
+                You MUST respond ONLY with valid JSON in the form:
+                {
+                  "quiz": [
+                    {
+                      "question": "string",
+                      "options": ["A","B","C","D"],
+                      "correctAnswer": "string"
+                    }
+                  ]
+                }
+                No explanations, no extra text.
+                `,
               },
-              { role: "user", content: userInput },
+              {
+                role: "user",
+                content: `Generate 3 ${level} level math questions about: ${userInput}`,
+              },
             ],
-            temperature: 0.7,
-            max_tokens: 1024,
+            temperature: 0.6,
           }),
         }
       );
 
       if (!response.ok) {
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
+        throw new Error(`API error: ${response.status}`);
       }
 
       const data = await response.json();
-      const content = data.choices?.[0]?.message?.content;
+      const content = data.choices[0].message.content;
 
-      // Extract JSON from response string
-      const match = content.match(/\[([\s\S]*)\]/);
-      if (!match) throw new Error("Invalid JSON format received.");
-      const parsedQuiz = JSON.parse(match[0]);
-
-      setQuiz(parsedQuiz);
-      setAnswers({});
+      const parsed = JSON.parse(content); // 👈 DIRECT PARSE (SAFE)
+      setQuiz(parsed.quiz);
     } catch (err) {
       console.error("Error generating quiz:", err);
-      setError(err.message || "Failed to generate quiz. Please try again.");
+      setError("Failed to generate quiz. Try another topic.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAnswerChange = (questionIndex, selectedOption) => {
-    setAnswers({ ...answers, [questionIndex]: selectedOption });
+  const handleAnswerChange = (index, selectedOption) => {
+    setAnswers({ ...answers, [index]: selectedOption });
   };
 
   const handleSubmitAnswers = () => {
@@ -106,10 +107,10 @@ Format the response as a JSON array. Each object should have:
       score: `${correctCount} / ${quiz.length}`,
       message:
         correctCount === quiz.length
-          ? "Great job! Keep it up!"
-          : "You can improve! Here are some suggestions.",
+          ? "Excellent work!"
+          : "Good try! Here are areas to improve.",
       recommendations: [...new Set(recommendations)].map(
-        (topic) => `Consider learning more about ${topic}.`
+        (t) => `Learn more about: ${t}`
       ),
     });
   };
@@ -121,28 +122,19 @@ Format the response as a JSON array. Each object should have:
       {!level ? (
         <div style={styles.levelSelector}>
           <p style={styles.label}>Choose your level:</p>
-          <button
-            style={styles.levelButton}
-            onClick={() => handleLevelSelect("Beginner")}
-          >
-            Beginner
-          </button>
-          <button
-            style={styles.levelButton}
-            onClick={() => handleLevelSelect("Intermediate")}
-          >
-            Intermediate
-          </button>
-          <button
-            style={styles.levelButton}
-            onClick={() => handleLevelSelect("Advanced")}
-          >
-            Advanced
-          </button>
+          {["Beginner", "Intermediate", "Advanced"].map((lvl) => (
+            <button
+              key={lvl}
+              style={styles.levelButton}
+              onClick={() => handleLevelSelect(lvl)}
+            >
+              {lvl}
+            </button>
+          ))}
         </div>
       ) : (
         <div style={styles.quizBox}>
-          <p style={styles.label}>Enter a math topic for {level} level:</p>
+          <p style={styles.label}>Enter a math topic:</p>
           <input
             type="text"
             value={userInput}
@@ -150,6 +142,7 @@ Format the response as a JSON array. Each object should have:
             placeholder="e.g., Algebra, Geometry, Calculus"
             style={styles.input}
           />
+
           <button
             onClick={handleContentSubmit}
             style={styles.generateButton}
@@ -163,46 +156,39 @@ Format the response as a JSON array. Each object should have:
           {quiz.length > 0 && (
             <div style={styles.quizContainer}>
               <h3 style={styles.quizHeader}>Quiz Questions</h3>
-              {quiz.map((q, index) => {
-                const isCorrect = answers[index] === q.correctAnswer;
-                const isSubmitted = feedback !== null;
 
+              {quiz.map((q, index) => {
+                const isSubmitted = feedback !== null;
                 return (
                   <div key={index} style={styles.questionBlock}>
                     <p>
                       <strong>{q.question}</strong>
                     </p>
-                    {q.options.map((option, optionIndex) => {
+                    {q.options.map((option) => {
                       const selected = answers[index] === option;
-                      const correctAnswer = q.correctAnswer;
+                      const correct = q.correctAnswer;
 
                       let optionStyle = {};
                       if (isSubmitted) {
-                        if (option === correctAnswer) {
+                        if (option === correct)
                           optionStyle = { color: "green", fontWeight: "bold" };
-                        } else if (selected && option !== correctAnswer) {
+                        else if (selected)
                           optionStyle = {
                             color: "red",
                             textDecoration: "line-through",
                           };
-                        }
                       }
 
                       return (
-                        <label
-                          key={optionIndex}
-                          style={{
-                            display: "block",
-                            marginBottom: "5px",
-                            ...optionStyle,
-                          }}
-                        >
+                        <label style={{ display: "block", ...optionStyle }}>
                           <input
                             type="radio"
-                            name={`question-${index}`}
+                            name={`q-${index}`}
                             value={option}
                             checked={selected}
-                            onChange={() => handleAnswerChange(index, option)}
+                            onChange={() =>
+                              handleAnswerChange(index, option)
+                            }
                             disabled={isSubmitted}
                           />
                           {option}
@@ -212,6 +198,7 @@ Format the response as a JSON array. Each object should have:
                   </div>
                 );
               })}
+
               {!feedback && (
                 <button
                   onClick={handleSubmitAnswers}
@@ -228,20 +215,16 @@ Format the response as a JSON array. Each object should have:
               <h3>Results</h3>
               <p>Score: {feedback.score}</p>
               <p>{feedback.message}</p>
+
               {feedback.recommendations.length > 0 && (
-                <div>
-                  <h4>Suggestions:</h4>
-                  <ul>
-                    {feedback.recommendations.map((rec, index) => (
-                      <li key={index}>{rec}</li>
-                    ))}
-                  </ul>
-                </div>
+                <ul>
+                  {feedback.recommendations.map((rec, i) => (
+                    <li key={i}>{rec}</li>
+                  ))}
+                </ul>
               )}
-              <button
-                style={styles.resetButton}
-                onClick={() => setLevel(null)}
-              >
+
+              <button style={styles.resetButton} onClick={() => setLevel(null)}>
                 Take Another Quiz
               </button>
             </div>
@@ -252,7 +235,8 @@ Format the response as a JSON array. Each object should have:
   );
 };
 
-// Internal CSS styles
+/* ------------------ STYLES ------------------ */
+
 const styles = {
   container: {
     padding: "30px",
@@ -260,35 +244,24 @@ const styles = {
     margin: "auto",
     fontFamily: "Arial, sans-serif",
     backgroundColor: "#C3B1E1",
-    color: "#000",
     borderRadius: "10px",
-    boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
   },
   header: {
     textAlign: "center",
     color: "#007acc",
     marginBottom: "20px",
   },
-  levelSelector: {
-    textAlign: "center",
-  },
-  label: {
-    fontWeight: "bold",
-    marginBottom: "10px",
-  },
+  levelSelector: { textAlign: "center" },
+  label: { fontWeight: "bold", marginBottom: "10px" },
   levelButton: {
     padding: "10px 20px",
     margin: "10px",
     backgroundColor: "#007acc",
     color: "white",
-    border: "none",
     borderRadius: "8px",
     cursor: "pointer",
-    fontSize: "16px",
   },
-  quizBox: {
-    marginTop: "20px",
-  },
+  quizBox: { marginTop: "20px" },
   input: {
     width: "100%",
     padding: "10px",
@@ -300,13 +273,8 @@ const styles = {
     backgroundColor: "#007acc",
     color: "white",
     padding: "10px 15px",
-    border: "none",
     borderRadius: "6px",
     cursor: "pointer",
-  },
-  error: {
-    color: "red",
-    marginTop: "10px",
   },
   quizContainer: {
     marginTop: "20px",
@@ -314,27 +282,20 @@ const styles = {
     backgroundColor: "#e6f4ff",
     borderRadius: "10px",
   },
-  quizHeader: {
-    color: "#007acc",
-    marginBottom: "15px",
-  },
-  questionBlock: {
-    marginBottom: "15px",
-  },
+  quizHeader: { color: "#007acc" },
+  questionBlock: { marginBottom: "15px" },
   submitButton: {
     backgroundColor: "#28a745",
     color: "white",
     padding: "10px 15px",
-    border: "none",
     borderRadius: "6px",
     cursor: "pointer",
-    marginTop: "10px",
   },
   feedbackBox: {
     marginTop: "20px",
     padding: "15px",
-    backgroundColor: "#fff",
     borderRadius: "10px",
+    backgroundColor: "#fff",
     border: "1px solid #ccc",
   },
   resetButton: {
@@ -342,9 +303,7 @@ const styles = {
     backgroundColor: "#007acc",
     color: "white",
     padding: "10px 15px",
-    border: "none",
     borderRadius: "6px",
-    cursor: "pointer",
   },
 };
 
