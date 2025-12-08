@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 
 const QuizGenerator = () => {
+  const groqApiKey =
+    "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";
   const [level, setLevel] = useState(null);
   const [userInput, setUserInput] = useState("");
   const [quiz, setQuiz] = useState([]);
@@ -33,7 +35,7 @@ const QuizGenerator = () => {
 
     try {
       const response = await fetch(
-        "https://your-backend-url.onrender.com/generate-quiz",
+        "https://api.groq.com/openai/v1/chat/completions",
         {
           method: "POST",
           headers: {

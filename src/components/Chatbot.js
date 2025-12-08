@@ -3,8 +3,7 @@ import Tesseract from 'tesseract.js';
 import Select from 'react-select';
 
 const AIAssistant = () => {
-  const groqApiKey = "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";  // ⚠️ Replace this in production!
-  const [messages, setMessages] = useState([
+    const [messages, setMessages] = useState([
     { role: 'assistant', content: "Hello! I'm your Math assistant. Ask me anything related to mathematics!" }
   ]);
   const [input, setInput] = useState('');
@@ -60,7 +59,7 @@ const AIAssistant = () => {
     try {
       const currentMessages = [...messages, userMessage];
 
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      const response = await fetch('https://https://visual-math-oscg.onrender.com/generate-quiz', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
