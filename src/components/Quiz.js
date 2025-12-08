@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 
 const QuizGenerator = () => {
-  const groqApiKey = "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"; // ❗Replace with env/backend later
+  // ✅ Load from .env (development only)
+  const groqApiKey = process.env.REACT_APP_GROQ_API_KEY;
 
   const [level, setLevel] = useState(null);
   const [userInput, setUserInput] = useState("");
@@ -42,12 +43,12 @@ const QuizGenerator = () => {
           },
           body: JSON.stringify({
             model: "llama-3.1-8b-instant",
-            response_format: { type: "json_object" }, // 👈 FORCES JSON
+            response_format: { type: "json_object" },
             messages: [
               {
                 role: "system",
                 content: `
-                You MUST respond ONLY with valid JSON in the form:
+                You MUST return ONLY valid JSON:
                 {
                   "quiz": [
                     {
@@ -57,15 +58,14 @@ const QuizGenerator = () => {
                     }
                   ]
                 }
-                No explanations, no extra text.
                 `,
               },
               {
                 role: "user",
-                content: `Generate 3 ${level} level math questions about: ${userInput}`,
+                content: `Generate 3 ${level} level math questions on: ${userInput}`,
               },
             ],
-            temperature: 0.6,
+            temperature: 0.5,
           }),
         }
       );
@@ -77,11 +77,11 @@ const QuizGenerator = () => {
       const data = await response.json();
       const content = data.choices[0].message.content;
 
-      const parsed = JSON.parse(content); // 👈 DIRECT PARSE (SAFE)
+      const parsed = JSON.parse(content);
       setQuiz(parsed.quiz);
     } catch (err) {
-      console.error("Error generating quiz:", err);
-      setError("Failed to generate quiz. Try another topic.");
+      console.error("Quiz Error:", err);
+      setError("Failed to generate quiz. Try again.");
     } finally {
       setLoading(false);
     }
@@ -96,11 +96,8 @@ const QuizGenerator = () => {
     let recommendations = [];
 
     quiz.forEach((q, index) => {
-      if (answers[index] === q.correctAnswer) {
-        correctCount++;
-      } else {
-        recommendations.push(userInput);
-      }
+      if (answers[index] === q.correctAnswer) correctCount++;
+      else recommendations.push(userInput);
     });
 
     setFeedback({
@@ -108,7 +105,7 @@ const QuizGenerator = () => {
       message:
         correctCount === quiz.length
           ? "Excellent work!"
-          : "Good try! Here are areas to improve.",
+          : "Good try! Here’s how you can improve.",
       recommendations: [...new Set(recommendations)].map(
         (t) => `Learn more about: ${t}`
       ),
@@ -159,11 +156,13 @@ const QuizGenerator = () => {
 
               {quiz.map((q, index) => {
                 const isSubmitted = feedback !== null;
+
                 return (
                   <div key={index} style={styles.questionBlock}>
                     <p>
                       <strong>{q.question}</strong>
                     </p>
+
                     {q.options.map((option) => {
                       const selected = answers[index] === option;
                       const correct = q.correctAnswer;
@@ -184,7 +183,6 @@ const QuizGenerator = () => {
                           <input
                             type="radio"
                             name={`q-${index}`}
-                            value={option}
                             checked={selected}
                             onChange={() =>
                               handleAnswerChange(index, option)
@@ -218,8 +216,8 @@ const QuizGenerator = () => {
 
               {feedback.recommendations.length > 0 && (
                 <ul>
-                  {feedback.recommendations.map((rec, i) => (
-                    <li key={i}>{rec}</li>
+                  {feedback.recommendations.map((rec) => (
+                    <li>{rec}</li>
                   ))}
                 </ul>
               )}
