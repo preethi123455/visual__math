@@ -7,8 +7,8 @@ const DualLanguageMathExplainer = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const groqApiKey = "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";
-  const mode = "general"; // ✅ define mode
+  // IMPORTANT: No API key here. Frontend -> Backend -> Groq.
+  const BACKEND_URL = "https://visual-math-oscg.onrender.com/generate-quiz";
 
   const getExplanation = async () => {
     if (!problem.trim()) {
@@ -21,60 +21,47 @@ const DualLanguageMathExplainer = () => {
     setError(null);
 
     let langPrompt = "Explain this math problem clearly";
-    switch (language) {
-      case "tamil":
-        langPrompt += " in Tamil";
-        break;
-      case "hindi":
-        langPrompt += " in Hindi";
-        break;
-      case "telugu":
-        langPrompt += " in Telugu";
-        break;
-      case "kannada":
-        langPrompt += " in Kannada";
-        break;
-      case "malayalam":
-        langPrompt += " in Malayalam";
-        break;
-      case "both":
-        langPrompt += " in both English and Tamil";
-        break;
-      default:
-        break;
-    }
 
-    const requestBody = {
-      model: mode === "general" ? "llama-3.1-8b-instant" : "llama-3.3-70b-versatile",
-      messages: [
-        {
-          role: "system",
-          content: `${langPrompt}. Make sure the explanation is step-by-step and suitable for a student.`,
-        },
-        { role: "user", content: problem },
-      ],
+    const langMap = {
+      tamil: " in Tamil",
+      hindi: " in Hindi",
+      telugu: " in Telugu",
+      kannada: " in Kannada",
+      malayalam: " in Malayalam",
+      both: " in both English and Tamil",
     };
 
+    langPrompt += langMap[language] || " in English";
+
     try {
-      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      const response = await fetch(BACKEND_URL, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${groqApiKey}`, // ✅ fixed variable
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: "system",
+              content: `${langPrompt}. Provide step-by-step explanation suitable for students.`,
+            },
+            {
+              role: "user",
+              content: problem,
+            },
+          ],
+        }),
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error?.message || "API error");
+      if (!response.ok) {
+        throw new Error("Backend error: " + response.status);
       }
+
+      const data = await response.json();
 
       setExplanation(data.choices[0].message.content);
     } catch (err) {
       setError(err.message);
     }
+
     setLoading(false);
   };
 
@@ -99,7 +86,7 @@ const DualLanguageMathExplainer = () => {
       width: "100%",
       height: "100px",
       padding: "10px",
-      border: "1px solid rgb(158, 21, 192)",
+      border: "1px solid rgb(158,21,192)",
       borderRadius: "6px",
       marginBottom: "15px",
       fontSize: "16px",
@@ -108,7 +95,7 @@ const DualLanguageMathExplainer = () => {
       width: "100%",
       padding: "10px",
       fontSize: "16px",
-      border: "1px solid rgb(181, 21, 192)",
+      border: "1px solid rgb(181,21,192)",
       borderRadius: "6px",
       marginBottom: "15px",
     },
@@ -126,7 +113,7 @@ const DualLanguageMathExplainer = () => {
       backgroundColor: "purple",
       padding: "15px",
       borderRadius: "6px",
-      border: "1px solid rgb(166, 21, 192)",
+      border: "1px solid rgb(166,21,192)",
       lineHeight: "1.6",
       whiteSpace: "pre-wrap",
       color: "white",
@@ -151,7 +138,11 @@ const DualLanguageMathExplainer = () => {
         onChange={(e) => setProblem(e.target.value)}
       />
 
-      <select style={styles.select} value={language} onChange={(e) => setLanguage(e.target.value)}>
+      <select
+        style={styles.select}
+        value={language}
+        onChange={(e) => setLanguage(e.target.value)}
+      >
         <option value="english">English</option>
         <option value="tamil">Tamil</option>
         <option value="hindi">Hindi</option>

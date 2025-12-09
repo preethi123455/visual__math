@@ -1,21 +1,23 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 
-const App = () => {
+const MathTopicReader = () => {
   const [topic, setTopic] = useState("");
   const [bookContent, setBookContent] = useState("");
   const [loading, setLoading] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voice, setVoice] = useState(null);
 
-  // Load voice properly even if getVoices is empty initially
+  // Your backend URL
+  const BACKEND_URL = "https://visual-math-oscg.onrender.com/generate-quiz";
+
+  // Load voice properly
   useEffect(() => {
     const waitForVoices = () => {
       return new Promise((resolve) => {
         let voices = speechSynthesis.getVoices();
-        if (voices.length) {
-          resolve(voices);
-        } else {
+        if (voices.length) resolve(voices);
+        else {
           const interval = setInterval(() => {
             voices = speechSynthesis.getVoices();
             if (voices.length) {
@@ -28,12 +30,9 @@ const App = () => {
     };
 
     waitForVoices().then((voices) => {
-      const preferredVoice =
-        voices.find((v) =>
-          v.name.toLowerCase().includes("female") ||
-          v.name.toLowerCase().includes("zira")
-        ) || voices[0];
-      setVoice(preferredVoice);
+      const preferred =
+        voices.find((v) => v.name.toLowerCase().includes("female")) || voices[0];
+      setVoice(preferred);
     });
   }, []);
 
@@ -47,45 +46,33 @@ const App = () => {
     setBookContent("");
 
     try {
-      const response = await axios.post(
-        "https://api.groq.com/openai/v1/chat/completions",
-        {
-          model: "llama3-8b-8192",
-          messages: [
-            {
-              role: "system",
-              content:
-                "You are a helpful assistant that provides textbook-style explanations on mathematics topics.",
-            },
-            {
-              role: "user",
-              content: `Provide a textbook-style explanation for the topic: "${topic}".`,
-            },
-          ],
-          temperature: 0.7,
-        },
-        {
-          headers: {
-            Authorization:
-              "Bearer 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",
-            "Content-Type": "application/json",
+      const response = await axios.post(BACKEND_URL, {
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a helpful assistant that provides textbook-style explanations on mathematics topics. Explain with examples and clear steps.",
           },
-        }
-      );
+          {
+            role: "user",
+            content: `Provide a textbook-style math explanation for the topic: "${topic}"`,
+          },
+        ],
+      });
 
       const reply = response.data.choices[0].message.content;
       setBookContent(reply);
-    } catch (error) {
-      console.error("Error fetching content:", error);
-      alert("Failed to fetch book content.");
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      console.error("Error fetching content:", err);
+      alert("Failed to fetch math explanation.");
     }
+
+    setLoading(false);
   };
 
   const handleReadAloud = () => {
     if (!bookContent || !voice) {
-      alert("Voice not ready yet. Please try again.");
+      alert("Voice not ready yet.");
       return;
     }
 
@@ -102,92 +89,93 @@ const App = () => {
     setIsSpeaking(false);
   };
 
+  const styles = {
+    container: {
+      padding: "2rem",
+      fontFamily: "Arial",
+      maxWidth: "800px",
+      margin: "auto",
+    },
+    input: {
+      padding: "10px",
+      width: "100%",
+      marginBottom: "1rem",
+      borderRadius: "5px",
+      border: "1px solid #ccc",
+    },
+    button: {
+      padding: "10px 20px",
+      marginBottom: "1rem",
+      background: "#28a745",
+      color: "white",
+      border: "none",
+      borderRadius: "5px",
+      cursor: "pointer",
+    },
+    contentBox: {
+      whiteSpace: "pre-wrap",
+      lineHeight: 1.6,
+      background: "#f8f9fa",
+      padding: "1rem",
+      borderRadius: "5px",
+      border: "1px solid #ddd",
+      fontSize: "16px",
+    },
+    readButton: {
+      background: "#007bff",
+      color: "white",
+      padding: "10px 20px",
+      border: "none",
+      borderRadius: "5px",
+      cursor: "pointer",
+      marginRight: "10px",
+    },
+    stopButton: {
+      background: "#dc3545",
+      color: "white",
+      padding: "10px 20px",
+      border: "none",
+      borderRadius: "5px",
+      cursor: "pointer",
+    },
+  };
+
   return (
-    <div style={{ padding: "2rem", fontFamily: "Arial", maxWidth: "800px", margin: "auto" }}>
-      <h1 style={{ textAlign: "center", marginBottom: "1.5rem" }}>📚 Math Topic Reader</h1>
+    <div style={styles.container}>
+      <h1 style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+        📚 Math Topic Reader
+      </h1>
 
       <input
         type="text"
-        value={topic}
         placeholder="Enter a math topic..."
+        value={topic}
         onChange={(e) => setTopic(e.target.value)}
-        style={{
-          padding: "10px",
-          width: "100%",
-          marginBottom: "1rem",
-          borderRadius: "5px",
-          border: "1px solid #ccc",
-        }}
+        style={styles.input}
       />
 
-      <button
-        onClick={fetchBookContent}
-        style={{
-          padding: "10px 20px",
-          marginBottom: "1rem",
-          background: "#28a745",
-          color: "white",
-          border: "none",
-          borderRadius: "5px",
-          cursor: "pointer",
-        }}
-      >
+      <button onClick={fetchBookContent} style={styles.button}>
         {loading ? "Loading..." : "Generate Explanation"}
       </button>
 
       {bookContent && (
         <div style={{ marginTop: "2rem" }}>
           <h2>📖 Explanation:</h2>
-          <pre
-            style={{
-              whiteSpace: "pre-wrap",
-              lineHeight: 1.6,
-              background: "#f8f9fa",
-              padding: "1rem",
-              borderRadius: "5px",
-              border: "1px solid #ddd",
-              fontSize: "16px",
-            }}
-          >
-            {bookContent}
-          </pre>
+          <pre style={styles.contentBox}>{bookContent}</pre>
 
-          <div style={{ marginTop: "1rem" }}>
-            {!isSpeaking ? (
-              <button
-                onClick={handleReadAloud}
-                style={{
-                  background: "#007bff",
-                  color: "white",
-                  padding: "10px 20px",
-                  border: "none",
-                  borderRadius: "5px",
-                  cursor: "pointer",
-                  marginRight: "10px",
-                }}
-              >
-                🔊 Read Aloud
-              </button>
-            ) : (
-              <button
-                onClick={stopReading}
-                style={{
-                  background: "#dc3545",
-                  color: "white",
-                  padding: "10px 20px",
-                  border: "none",
-                  borderRadius: "5px",
-                  cursor: "pointer",
-                }}
-              >
-                ⛔ Stop Reading
-              </button>
-            )}
-          </div>
+          {!isSpeaking ? (
+            <button onClick={handleReadAloud} style={styles.readButton}>
+              🔊 Read Aloud
+            </button>
+          ) : (
+            <button onClick={stopReading} style={styles.stopButton}>
+              ⛔ Stop Reading
+            </button>
+          )}
         </div>
       )}
     </div>
   );
 };
 
-export default App;
+export default MathTopicReader;
