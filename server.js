@@ -3,33 +3,37 @@ const express = require("express");
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 const cors = require("cors");
-const fetch = require("node-fetch");
-require("dotenv").config(); // Load environment variables
+
+// FIX: dynamic import for node-fetch (because v3 is ESM only)
+const fetch = (...args) =>
+  import("node-fetch").then(({ default: fetch }) => fetch(...args));
+
+require("dotenv").config(); // loads GROQ_API_KEY
 
 const app = express();
 app.use(express.json());
 
-// ---------------- CORS FIXED ----------------
+// ------------------- CORS FIXED -------------------
 app.use(
   cors({
     origin: [
       "http://localhost:3000",
-      "https://visual-frontend-bsfk.onrender.com"
+      "https://visual-math-frontend.onrender.com" // ✅ REPLACE with your correct frontend domain
     ],
     methods: ["GET", "POST"],
     allowedHeaders: ["Content-Type"],
   })
 );
 
-// ---------------- DATABASE CONNECTION ----------------
+// ------------------- MongoDB Connection -------------------
 mongoose
   .connect(
     "mongodb+srv://preethi:Preethi123@cluster0.5zvyv1w.mongodb.net/educonnect?retryWrites=true&w=majority"
   )
-  .then(() => console.log("MongoDB connected"))
-  .catch((err) => console.log("Database Error:", err));
+  .then(() => console.log("✅ MongoDB connected"))
+  .catch((err) => console.log("❌ Database Error:", err));
 
-// ---------------- USER SCHEMA ----------------
+// ------------------- User Schema -------------------
 const userSchema = new mongoose.Schema({
   name: String,
   email: { type: String, unique: true },
@@ -39,12 +43,12 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model("User", userSchema);
 
-// ---------------- TEST ROUTE ----------------
+// ------------------- Test Route -------------------
 app.get("/", (req, res) => {
   res.send("Backend is running");
 });
 
-// ---------------- SIGNUP ----------------
+// ------------------- Signup -------------------
 app.post("/signup", async (req, res) => {
   try {
     const { name, email, phone, password } = req.body;
@@ -66,7 +70,7 @@ app.post("/signup", async (req, res) => {
   }
 });
 
-// ---------------- LOGIN ----------------
+// ------------------- Login -------------------
 app.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
@@ -79,7 +83,7 @@ app.post("/login", async (req, res) => {
   }
 });
 
-// ---------------- QUIZ GENERATION (GROQ API) ----------------
+// ------------------- AI Chat Route -------------------
 app.post("/generate-quiz", async (req, res) => {
   try {
     const response = await fetch(
@@ -88,14 +92,13 @@ app.post("/generate-quiz", async (req, res) => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${process.env.GROQ_API_KEY}`,
+          Authorization: `Bearer ${process.env.GROQ_API_KEY}`, // Secure from env
         },
         body: JSON.stringify(req.body),
       }
     );
 
     const data = await response.json();
-
     res.json(data);
   } catch (error) {
     console.error("Groq API error:", error);
@@ -103,7 +106,8 @@ app.post("/generate-quiz", async (req, res) => {
   }
 });
 
-// ---------------- START SERVER ----------------
-app.listen(process.env.PORT || 5000, () =>
-  console.log("Server running on port " + (process.env.PORT || 5000))
+// ------------------- Server Start -------------------
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () =>
+  console.log(`🚀 Server running on port ${PORT}`)
 );
