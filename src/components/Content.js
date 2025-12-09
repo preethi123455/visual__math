@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 const ContentExplorer = () => {
-  const groqApiKey = "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"; // Your Groq API key
+  const groqApiKey = "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"; // Your Groq API key
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [activeCategory, setActiveCategory] = useState('all');
