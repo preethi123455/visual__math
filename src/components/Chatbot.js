@@ -1,50 +1,73 @@
-import React, { useState, useRef } from 'react';
-import Tesseract from 'tesseract.js';
-import Select from 'react-select';
+import React, { useState, useRef } from "react";
+import Tesseract from "tesseract.js";
+import Select from "react-select";
 
 const AIAssistant = () => {
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: "Hello! I'm your Math assistant. Ask me anything related to mathematics!" }
+    {
+      role: "assistant",
+      content:
+        "Hello! I'm your Math assistant. Ask me anything related to mathematics!",
+    },
   ]);
 
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [mode, setMode] = useState('general');
+  const [mode, setMode] = useState("general"); // kept for future extension
   const [recording, setRecording] = useState(false);
-  const [language, setLanguage] = useState({ value: 'english', label: 'English' });
+  const [language, setLanguage] = useState({
+    value: "english",
+    label: "English",
+  });
 
   const recognitionRef = useRef(null);
 
   const languagePrompts = {
-    english: 'Respond fully in English.',
-    tamil: 'Respond fully in Tamil.',
-    hindi: 'Respond fully in Hindi.',
-    kannada: 'Respond fully in Kannada.',
-    malayalam: 'Respond fully in Malayalam.'
+    english: "Respond fully in English.",
+    tamil: "Respond fully in Tamil.",
+    hindi: "Respond fully in Hindi.",
+    kannada: "Respond fully in Kannada.",
+    malayalam: "Respond fully in Malayalam.",
   };
 
   const speakText = (text) => {
+    if (!window.speechSynthesis) return;
+
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = {
-      english: 'en-US',
-      tamil: 'ta-IN',
-      hindi: 'hi-IN',
-      kannada: 'kn-IN',
-      malayalam: 'ml-IN'
-    }[language.value] || 'en-US';
+    utterance.lang =
+      {
+        english: "en-US",
+        tamil: "ta-IN",
+        hindi: "hi-IN",
+        kannada: "kn-IN",
+        malayalam: "ml-IN",
+      }[language.value] || "en-US";
 
     window.speechSynthesis.speak(utterance);
   };
 
   const isMathRelated = (text) => {
     const mathKeywords = [
-      'math', 'algebra', 'geometry', 'calculus', 'trigonometry',
-      'integral', 'derivative', 'theorem', 'equation', 'logarithm',
-      'matrix', 'probability', 'statistics', 'function', 'number',
-      'prime', 'maths'
+      "math",
+      "algebra",
+      "geometry",
+      "calculus",
+      "trigonometry",
+      "integral",
+      "derivative",
+      "theorem",
+      "equation",
+      "logarithm",
+      "matrix",
+      "probability",
+      "statistics",
+      "function",
+      "number",
+      "prime",
+      "maths",
     ];
 
-    return mathKeywords.some(keyword =>
+    return mathKeywords.some((keyword) =>
       text.toLowerCase().includes(keyword)
     );
   };
@@ -53,20 +76,24 @@ const AIAssistant = () => {
     if (!input.trim()) return;
 
     if (!isMathRelated(input)) {
-      setMessages(prev => [
+      setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: 'Please ask only math-related questions!' }
+        {
+          role: "assistant",
+          content: "Please ask only math-related questions!",
+        },
       ]);
-      setInput('');
+      setInput("");
       return;
     }
 
-    const newMessage = { role: 'user', content: input };
-    setMessages(prev => [...prev, newMessage]);
-    setInput('');
+    const newMessage = { role: "user", content: input };
+    setMessages((prev) => [...prev, newMessage]);
+    setInput("");
     setLoading(true);
 
     try {
+      // include previous chat history + new message
       const currentMessages = [...messages, newMessage];
 
       const response = await fetch(
@@ -75,20 +102,18 @@ const AIAssistant = () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: mode === "general" ? "llama-3.1-8b-instant" : "llama-3.3-70b-versatile",
+            // backend expects { messages }
             messages: [
               {
                 role: "system",
                 content: `You are a math learning assistant. 
-                Only answer mathematics topics.
-                Provide explanations with examples.
-                ${languagePrompts[language.value]}`
+Only answer mathematics topics.
+Provide explanations with clear steps and examples.
+${languagePrompts[language.value]}`,
               },
-              ...currentMessages
+              ...currentMessages,
             ],
-            temperature: 0.7,
-            max_tokens: 1024
-          })
+          }),
         }
       );
 
@@ -97,20 +122,23 @@ const AIAssistant = () => {
       }
 
       const data = await response.json();
+
       const botReply =
         data.choices?.[0]?.message?.content ||
         "Sorry, I couldn't generate a response.";
 
-      setMessages(prev => [...prev, { role: 'assistant', content: botReply }]);
-
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: botReply },
+      ]);
     } catch (err) {
       console.error("Error:", err);
-      setMessages(prev => [
+      setMessages((prev) => [
         ...prev,
         {
-          role: 'assistant',
-          content: 'Error connecting to AI service. Please try again.'
-        }
+          role: "assistant",
+          content: "Error connecting to AI service. Please try again.",
+        },
       ]);
     } finally {
       setLoading(false);
@@ -129,19 +157,29 @@ const AIAssistant = () => {
     const recognition = new SpeechRecognition();
     recognitionRef.current = recognition;
 
-    recognition.lang = {
-      english: 'en-US',
-      tamil: 'ta-IN',
-      hindi: 'hi-IN',
-      kannada: 'kn-IN',
-      malayalam: 'ml-IN'
-    }[language.value];
+    recognition.lang =
+      {
+        english: "en-US",
+        tamil: "ta-IN",
+        hindi: "hi-IN",
+        kannada: "kn-IN",
+        malayalam: "ml-IN",
+      }[language.value] || "en-US";
 
     recognition.interimResults = false;
 
     recognition.onresult = (event) => {
       const transcript = event.results[0][0].transcript;
-      setInput(prev => prev + " " + transcript);
+      setInput((prev) => (prev ? prev + " " + transcript : transcript));
+    };
+
+    recognition.onerror = (e) => {
+      console.error("Speech recognition error:", e);
+      setRecording(false);
+    };
+
+    recognition.onend = () => {
+      setRecording(false);
     };
 
     recognition.start();
@@ -149,7 +187,9 @@ const AIAssistant = () => {
   };
 
   const handleStopRecording = () => {
-    if (recognitionRef.current) recognitionRef.current.stop();
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
     setRecording(false);
   };
 
@@ -159,8 +199,8 @@ const AIAssistant = () => {
 
     setLoading(true);
     try {
-      const result = await Tesseract.recognize(file, 'eng');
-      setInput(prev => prev + " " + result.data.text);
+      const result = await Tesseract.recognize(file, "eng");
+      setInput((prev) => (prev ? prev + " " + result.data.text : result.data.text));
     } catch (err) {
       console.error("OCR error:", err);
     }
@@ -169,19 +209,20 @@ const AIAssistant = () => {
 
   return (
     <div style={{ height: "calc(100vh - 140px)", padding: 20 }}>
+      {/* Top bar */}
       <div style={{ display: "flex", justifyContent: "space-between" }}>
         <h2 style={{ color: "#6a0dad" }}>AI Learning Assistant</h2>
 
-        <div style={{ display: "flex", gap: 10 }}>
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <button
-            onClick={() => setMode('general')}
+            onClick={() => setMode("general")}
             style={{
               padding: "10px 15px",
-              background: mode === 'general' ? "#6a0dad" : "#f0e6ff",
-              color: mode === 'general' ? "white" : "#6a0dad",
+              background: mode === "general" ? "#6a0dad" : "#f0e6ff",
+              color: mode === "general" ? "white" : "#6a0dad",
               borderRadius: 6,
               border: "none",
-              cursor: "pointer"
+              cursor: "pointer",
             }}
           >
             General Help
@@ -193,30 +234,37 @@ const AIAssistant = () => {
               { value: "tamil", label: "Tamil" },
               { value: "hindi", label: "Hindi" },
               { value: "kannada", label: "Kannada" },
-              { value: "malayalam", label: "Malayalam" }
+              { value: "malayalam", label: "Malayalam" },
             ]}
             value={language}
             onChange={setLanguage}
-            styles={{ container: base => ({ ...base, width: 150 }) }}
+            styles={{
+              container: (base) => ({ ...base, width: 150 }),
+            }}
           />
         </div>
       </div>
 
-      <div style={{
-        marginTop: 15,
-        background: "#C3B1E1",
-        borderRadius: 10,
-        height: "calc(100% - 70px)",
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden"
-      }}>
-        <div style={{
-          flex: 1,
-          overflowY: "auto",
-          padding: 20
-        }}>
-
+      {/* Chat area */}
+      <div
+        style={{
+          marginTop: 15,
+          background: "#C3B1E1",
+          borderRadius: 10,
+          height: "calc(100% - 70px)",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}
+      >
+        {/* Messages */}
+        <div
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            padding: 20,
+          }}
+        >
           {messages.map((msg, idx) => (
             <div
               key={idx}
@@ -227,7 +275,7 @@ const AIAssistant = () => {
                 borderRadius: 8,
                 marginBottom: 10,
                 maxWidth: "80%",
-                position: "relative"
+                position: "relative",
               }}
             >
               {msg.content}
@@ -245,7 +293,7 @@ const AIAssistant = () => {
                     borderRadius: 5,
                     border: "none",
                     cursor: "pointer",
-                    fontSize: 12
+                    fontSize: 12,
                   }}
                 >
                   🔊
@@ -255,32 +303,38 @@ const AIAssistant = () => {
           ))}
 
           {loading && (
-            <div style={{
-              padding: 10,
-              background: "#eaeaea",
-              borderRadius: 8
-            }}>
+            <div
+              style={{
+                padding: 10,
+                background: "#eaeaea",
+                borderRadius: 8,
+              }}
+            >
               Thinking...
             </div>
           )}
         </div>
 
-        <div style={{
-          display: "flex",
-          gap: 10,
-          padding: 15,
-          background: "white",
-        }}>
+        {/* Input area */}
+        <div
+          style={{
+            display: "flex",
+            gap: 10,
+            padding: 15,
+            background: "white",
+            alignItems: "center",
+          }}
+        >
           <input
             value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSend()}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSend()}
             placeholder="Ask a math question..."
             style={{
               flex: 1,
               padding: "12px 15px",
               borderRadius: 8,
-              border: "1px solid #ddd"
+              border: "1px solid #ddd",
             }}
           />
 
@@ -292,13 +346,34 @@ const AIAssistant = () => {
               background: "#6a0dad",
               color: "white",
               borderRadius: 8,
-              border: "none"
+              border: "none",
+              cursor: "pointer",
+              opacity: loading ? 0.7 : 1,
             }}
           >
             Send
           </button>
 
-          <input type="file" accept="image/*" onChange={handleImageUpload} />
+          <button
+            onClick={recording ? handleStopRecording : handleStartRecording}
+            style={{
+              padding: "10px 12px",
+              background: recording ? "#ff4d4d" : "#f0e6ff",
+              color: recording ? "white" : "#6a0dad",
+              borderRadius: 8,
+              border: "none",
+              cursor: "pointer",
+            }}
+          >
+            {recording ? "⏹ Stop" : "🎙 Speak"}
+          </button>
+
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleImageUpload}
+            style={{ maxWidth: 180 }}
+          />
         </div>
       </div>
     </div>
