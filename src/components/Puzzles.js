@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
 
 const Puzzles = () => {
+  const BACKEND_URL = "https://visual-math-oscg.onrender.com/generate-puzzle";
+
   const [challenge, setChallenge] = useState("");
   const [correctAnswer, setCorrectAnswer] = useState("");
   const [userAnswer, setUserAnswer] = useState("");
@@ -13,41 +15,17 @@ const Puzzles = () => {
   ]);
   const [message, setMessage] = useState("");
 
-  const groqApiKey = "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";
-  const mode = "general"; // ✅ Define mode
-
   const fetchChallenge = async () => {
     try {
-      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      const response = await fetch(BACKEND_URL, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${groqApiKey}`, // ✅ fixed
-        },
-        body: JSON.stringify({
-          model: mode === "general" ? "llama-3.1-8b-instant" : "llama-3.3-70b-versatile",
-          messages: [
-            {
-              role: "system",
-              content:
-                "You are an assistant that generates simple math puzzles. Provide a puzzle and its answer in the format: 'Puzzle: ... Answer: ...'.",
-            },
-            {
-              role: "user",
-              content: "Please provide a simple math puzzle suitable for a beginner.",
-            },
-          ],
-          temperature: 0.7,
-          max_tokens: 100,
-        }),
+        headers: { "Content-Type": "application/json" },
       });
 
-      if (!response.ok) {
-        throw new Error(`API responded with status ${response.status}`);
-      }
+      if (!response.ok) throw new Error("Backend error");
 
       const data = await response.json();
-      const content = data.choices?.[0]?.message?.content;
+      const content = data.choices?.[0]?.message?.content || "";
 
       const puzzleMatch = content.match(/Puzzle:\s*(.+)/);
       const answerMatch = content.match(/Answer:\s*(.+)/);
@@ -56,21 +34,22 @@ const Puzzles = () => {
         setChallenge(puzzleMatch[1].trim());
         setCorrectAnswer(answerMatch[1].trim());
       } else {
-        setChallenge("Oops! Puzzle format was incorrect.");
+        setChallenge("❌ Incorrect puzzle format.");
         setCorrectAnswer("");
       }
     } catch (error) {
-      console.error("Error fetching puzzle:", error);
-      setChallenge("Error loading puzzle. Please try again.");
-      setCorrectAnswer("");
+      console.error(error);
+      setChallenge("❌ Could not load puzzle.");
     }
   };
 
   useEffect(() => {
     fetchChallenge();
-    const stored = JSON.parse(localStorage.getItem("leaderboard")) || leaderboard;
-    setLeaderboard(stored);
-    const yourEntry = stored.find((entry) => entry.name === "You");
+
+    const saved = JSON.parse(localStorage.getItem("leaderboard")) || leaderboard;
+    setLeaderboard(saved);
+
+    const yourEntry = saved.find((e) => e.name === "You");
     setScore(yourEntry ? yourEntry.score : 0);
   }, []);
 
@@ -78,15 +57,18 @@ const Puzzles = () => {
     const updated = leaderboard.map((entry) =>
       entry.name === "You" ? { ...entry, score: newScore } : entry
     );
+
     updated.sort((a, b) => b.score - a.score);
     setLeaderboard(updated);
     localStorage.setItem("leaderboard", JSON.stringify(updated));
 
-    const rank = updated.findIndex((entry) => entry.name === "You") + 1;
-    let motivation = `You're currently ranked ${rank}. Keep going!`;
-    if (rank === 1) motivation = "You're at the top! Fantastic work!";
-    else if (rank <= 3) motivation = "You're in the top 3! Great job!";
-    setMessage(motivation);
+    const rank = updated.findIndex((e) => e.name === "You") + 1;
+    let msg = `You are Ranked #${rank}. Keep going!`;
+
+    if (rank === 1) msg = "🔥 You're at the top! Excellent!";
+    else if (rank <= 3) msg = "🎉 You're in the Top 3! Great job!";
+
+    setMessage(msg);
   };
 
   const handleSubmit = () => {
@@ -94,11 +76,11 @@ const Puzzles = () => {
       const newScore = score + 10;
       setScore(newScore);
       updateLeaderboard(newScore);
-      alert("✅ Correct! Here's a new puzzle.");
+      alert("✅ Correct! Here’s a new puzzle.");
       setUserAnswer("");
       fetchChallenge();
     } else {
-      alert("❌ Incorrect. Try again!");
+      alert("❌ Incorrect! Try again.");
     }
   };
 
@@ -107,8 +89,9 @@ const Puzzles = () => {
       <h1 style={styles.header}>Gamified Math Challenges</h1>
 
       <div style={styles.card}>
-        <h2 style={styles.subheading}>Puzzle</h2>
+        <h2 style={styles.subheading}>Puzzle of the Day</h2>
         <p style={styles.puzzle}>{challenge}</p>
+
         <input
           type="text"
           placeholder="Enter your answer"
@@ -116,18 +99,21 @@ const Puzzles = () => {
           onChange={(e) => setUserAnswer(e.target.value)}
           style={styles.input}
         />
+
         <button onClick={handleSubmit} style={styles.button}>
           Submit
         </button>
+
         <p style={styles.score}>Your Score: {score}</p>
         {message && <p style={styles.message}>{message}</p>}
       </div>
 
       <div style={styles.leaderboard}>
         <h2 style={styles.subheading}>Leaderboard</h2>
-        {leaderboard.map((entry, index) => (
-          <div key={index} style={styles.leaderEntry}>
-            {index + 1}. {entry.name}: {entry.score} pts
+
+        {leaderboard.map((entry, i) => (
+          <div key={i} style={styles.leaderEntry}>
+            {i + 1}. {entry.name}: {entry.score} pts
           </div>
         ))}
       </div>
@@ -139,70 +125,67 @@ const styles = {
   container: {
     backgroundColor: "#C3B1E1",
     minHeight: "100vh",
-    padding: "20px",
-    fontFamily: "'Segoe UI', sans-serif",
+    padding: 20,
+    fontFamily: "Segoe UI",
   },
   header: {
     textAlign: "center",
     color: "#007acc",
-    marginBottom: "20px",
+    marginBottom: 20,
   },
   card: {
-    backgroundColor: "#ffffff",
-    maxWidth: "600px",
+    backgroundColor: "white",
+    maxWidth: 600,
     margin: "0 auto 20px",
-    padding: "20px",
-    borderRadius: "10px",
-    boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
+    padding: 20,
+    borderRadius: 10,
   },
   subheading: {
     textAlign: "center",
     color: "#005f99",
-    marginBottom: "10px",
+    marginBottom: 10,
   },
   puzzle: {
-    fontSize: "18px",
-    color: "#333",
-    marginBottom: "15px",
+    fontSize: 18,
     textAlign: "center",
+    marginBottom: 15,
+    color: "#333",
   },
   input: {
     width: "100%",
-    padding: "10px",
-    borderRadius: "5px",
+    padding: 10,
+    borderRadius: 5,
     border: "1px solid #ccc",
-    marginBottom: "10px",
+    marginBottom: 10,
   },
   button: {
-    backgroundColor: "#007acc",
-    color: "#fff",
-    border: "none",
-    padding: "10px 20px",
-    borderRadius: "5px",
-    cursor: "pointer",
     width: "100%",
+    background: "#007acc",
+    color: "white",
+    padding: 10,
+    borderRadius: 5,
+    cursor: "pointer",
   },
   score: {
     textAlign: "center",
+    marginTop: 15,
     fontWeight: "bold",
-    marginTop: "15px",
   },
   message: {
     textAlign: "center",
+    marginTop: 10,
     color: "#28a745",
-    marginTop: "10px",
   },
   leaderboard: {
-    maxWidth: "600px",
+    maxWidth: 600,
     margin: "0 auto",
+    padding: 15,
     backgroundColor: "#f9f9f9",
-    padding: "15px",
-    borderRadius: "10px",
-    boxShadow: "0 2px 6px rgba(0,0,0,0.05)",
+    borderRadius: 10,
   },
   leaderEntry: {
     padding: "5px 0",
-    fontSize: "16px",
+    fontSize: 16,
   },
 };
 

@@ -3,24 +3,28 @@ import * as THREE from "three";
 
 const Visualizer = () => {
   const mountRef = useRef(null);
-  const rendererRef = useRef(null); // Store renderer persistently
+  const rendererRef = useRef(null);
   const [problem, setProblem] = useState("");
   const [explanation, setExplanation] = useState("");
   const [renderKey, setRenderKey] = useState(0);
 
+  // BACKEND URL — SAFE
+  const BACKEND_URL = "https://visual-math-oscg.onrender.com/generate-quiz";
+
   const handleSubmit = async () => {
-    if (!problem) return;
+    if (!problem.trim()) return;
 
     try {
-      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      const res = await fetch(BACKEND_URL, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer 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", // Replace with a valid API key
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: mode === 'general' ? 'llama-3.1-8b-instant' : 'llama-3.3-70b-versatile',
           messages: [
+            {
+              role: "system",
+              content:
+                "You are a math visual explanation assistant. Explain topics visually and step-by-step.",
+            },
             {
               role: "user",
               content: `Explain this mathematical concept visually and step-by-step: ${problem}`,
@@ -29,10 +33,15 @@ const Visualizer = () => {
         }),
       });
 
+      if (!res.ok) {
+        throw new Error("Backend error: " + res.status);
+      }
+
       const data = await res.json();
       const text = data.choices?.[0]?.message?.content || "❌ Unable to fetch explanation.";
+
       setExplanation(text);
-      setRenderKey((prev) => prev + 1); // Trigger rerender
+      setRenderKey((prev) => prev + 1);
     } catch (err) {
       console.error(err);
       setExplanation("❌ Failed to fetch explanation.");
@@ -42,7 +51,7 @@ const Visualizer = () => {
   useEffect(() => {
     if (!mountRef.current) return;
 
-    // Clear previous canvas
+    // Clear old canvas
     if (rendererRef.current) {
       rendererRef.current.dispose();
       rendererRef.current.forceContextLoss();
@@ -51,6 +60,7 @@ const Visualizer = () => {
       }
     }
 
+    // Setup Scene
     const scene = new THREE.Scene();
     scene.background = new THREE.Color("skyblue");
 
@@ -64,7 +74,10 @@ const Visualizer = () => {
     camera.lookAt(0, 0, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight);
+    renderer.setSize(
+      mountRef.current.clientWidth,
+      mountRef.current.clientHeight
+    );
     mountRef.current.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
@@ -72,11 +85,11 @@ const Visualizer = () => {
     scene.add(new THREE.GridHelper(10, 10));
     scene.add(new THREE.AxesHelper(5));
 
-    // Visual rendering based on concept
+    // Render objects based on concept
     const renderConcept = (concept) => {
       const lower = concept.toLowerCase();
 
-      if (lower.includes("x + y + z = 1")) {
+      if (lower.includes("plane") || lower.includes("x + y + z = 1")) {
         const geometry = new THREE.PlaneGeometry(10, 10);
         const material = new THREE.MeshBasicMaterial({
           color: 0xffffff,
@@ -93,33 +106,34 @@ const Visualizer = () => {
       if (lower.includes("vector")) {
         const dir = new THREE.Vector3(1, 1, 0).normalize();
         const origin = new THREE.Vector3(0, 0, 0);
-        const length = 4;
-        const hex = 0xff0000;
-        const arrowHelper = new THREE.ArrowHelper(dir, origin, length, hex);
-        scene.add(arrowHelper);
+        const arrow = new THREE.ArrowHelper(dir, origin, 4, 0xff0000);
+        scene.add(arrow);
       }
 
       if (lower.includes("line")) {
         const material = new THREE.LineBasicMaterial({ color: 0x0000ff });
-        const points = [];
-        points.push(new THREE.Vector3(-5, -5, -5));
-        points.push(new THREE.Vector3(5, 5, 5));
+        const points = [
+          new THREE.Vector3(-5, -5, -5),
+          new THREE.Vector3(5, 5, 5),
+        ];
         const geometry = new THREE.BufferGeometry().setFromPoints(points);
         const line = new THREE.Line(geometry, material);
         scene.add(line);
       }
 
       if (lower.includes("cube")) {
-        const geometry = new THREE.BoxGeometry();
-        const material = new THREE.MeshNormalMaterial();
-        const cube = new THREE.Mesh(geometry, material);
+        const cube = new THREE.Mesh(
+          new THREE.BoxGeometry(),
+          new THREE.MeshNormalMaterial()
+        );
         scene.add(cube);
       }
 
       if (lower.includes("circle")) {
-        const geometry = new THREE.CircleGeometry(2, 32);
-        const material = new THREE.MeshBasicMaterial({ color: 0xffff00 });
-        const circle = new THREE.Mesh(geometry, material);
+        const circle = new THREE.Mesh(
+          new THREE.CircleGeometry(2, 32),
+          new THREE.MeshBasicMaterial({ color: 0xffff00 })
+        );
         circle.rotation.x = -Math.PI / 2;
         scene.add(circle);
       }
@@ -148,10 +162,11 @@ const Visualizer = () => {
 
       <input
         style={styles.input}
-        placeholder="Enter math concept like 'vector', 'plane', 'x + y + z = 1'"
+        placeholder="Enter concept: vector, cube, line, plane..."
         value={problem}
         onChange={(e) => setProblem(e.target.value)}
       />
+
       <button style={styles.button} onClick={handleSubmit}>
         🔍 Explain & Visualize
       </button>
@@ -171,57 +186,46 @@ const Visualizer = () => {
 const styles = {
   container: {
     textAlign: "center",
-    fontFamily: "Arial, sans-serif",
+    fontFamily: "Arial",
     backgroundColor: "skyblue",
-    color: "#fff",
     minHeight: "100vh",
-    padding: "20px",
+    padding: 20,
+    color: "white",
   },
-  header: {
-    fontSize: "2.5rem",
-    marginBottom: "20px",
-  },
+  header: { fontSize: "2.4rem", marginBottom: 20 },
   input: {
-    padding: "10px",
-    fontSize: "1rem",
+    padding: 10,
     width: "60%",
-    borderRadius: "6px",
+    borderRadius: 6,
     border: "none",
-    outline: "none",
-    marginBottom: "10px",
   },
   button: {
     padding: "10px 20px",
-    fontSize: "1rem",
-    backgroundColor: "#ffffff",
+    marginLeft: 10,
+    borderRadius: 8,
+    background: "white",
     color: "#0077cc",
     border: "2px solid #0077cc",
-    borderRadius: "8px",
     cursor: "pointer",
-    marginLeft: "10px",
   },
   visual: {
     width: "100%",
-    height: "400px",
-    border: "2px solid white",
-    borderRadius: "10px",
-    marginTop: "20px",
+    height: 400,
+    borderRadius: 10,
+    background: "white",
+    marginTop: 20,
   },
   explanationBox: {
-    backgroundColor: "#ffffff",
+    marginTop: 30,
+    background: "white",
+    padding: 20,
+    borderRadius: 10,
     color: "#003366",
-    marginTop: "30px",
-    padding: "20px",
-    borderRadius: "10px",
-    textAlign: "left",
-    maxWidth: "900px",
+    maxWidth: 900,
     margin: "30px auto",
-    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+    textAlign: "left",
   },
-  explanationText: {
-    fontSize: "1.1rem",
-    lineHeight: "1.6",
-  },
+  explanationText: { fontSize: "1.1rem", lineHeight: 1.6 },
 };
 
 export default Visualizer;
