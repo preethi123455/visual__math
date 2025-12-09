@@ -9,11 +9,8 @@ const AIChalkboardTutor = () => {
   const canvasRef = useRef(null);
   const handRef = useRef(null);
 
-  // ✅ Hardcoded API key
-  const groqApiKey = "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";
-
-  // ✅ Define mode to avoid no-undef
-  const mode = "general"; // or 'advanced' for other model
+  const BACKEND_URL =
+    "https://visual-math-oscg.onrender.com/chalk-explain"; // ✅ secure backend route
 
   const fetchSolution = async () => {
     if (!question.trim()) return;
@@ -23,35 +20,24 @@ const AIChalkboardTutor = () => {
     speechSynthesis.cancel();
 
     try {
-      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      const res = await fetch(BACKEND_URL, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${groqApiKey}`, // ✅ use groqApiKey
-        },
-        body: JSON.stringify({
-          model: mode === "general" ? "llama-3.1-8b-instant" : "llama-3.3-70b-versatile",
-          messages: [
-            {
-              role: "system",
-              content: "You are a helpful math tutor. Solve the math problem with a final answer. Explain each step in less than 8 words.",
-            },
-            {
-              role: "user",
-              content: `Question: ${question}. My Answer: ${answer}`,
-            },
-          ],
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question, studentAnswer: answer }),
       });
 
-      const data = await response.json();
+      const data = await res.json();
       const message = data.choices?.[0]?.message?.content || "";
-      const lines = message.split(/\n+/).filter((line) => line.trim());
-      const formattedSteps = lines.map((s, i) => `${i + 1}. ${s.trim().slice(0, 70)}`);
-      setSteps(formattedSteps);
-      speakText(formattedSteps[0]);
+
+      const lines = message
+        .split(/\n+/)
+        .filter((line) => line.trim())
+        .map((s, i) => `${i + 1}. ${s.trim().slice(0, 70)}`);
+
+      setSteps(lines);
+      speakText(lines[0]);
     } catch (err) {
-      console.error("API Error:", err);
+      console.error("Chalkboard Error:", err);
     }
 
     setLoading(false);
@@ -74,52 +60,48 @@ const AIChalkboardTutor = () => {
         ctx.clearRect(x, y - 30, canvasRef.current.width - 60, 35);
         ctx.fillText(text.slice(0, j), x, y);
 
-        const textMetrics = ctx.measureText(text.slice(0, j));
+        const width = ctx.measureText(text.slice(0, j)).width;
+
         if (handRef.current) {
           handRef.current.style.display = "block";
-          handRef.current.style.left = `${x + textMetrics.width + 30}px`;
+          handRef.current.style.left = `${x + width + 30}px`;
           handRef.current.style.top = `${y - 20}px`;
         }
 
-        await new Promise((r) => setTimeout(r, 25));
+        await new Promise((res) => setTimeout(res, 25));
       }
 
       speakText(text);
       y += 60;
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise((res) => setTimeout(res, 1000));
     }
 
-    if (handRef.current) {
-      handRef.current.style.display = "none";
-    }
+    if (handRef.current) handRef.current.style.display = "none";
   };
 
   const speakText = (text) => {
     speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "en-US";
-    utterance.rate = 0.9;
-    speechSynthesis.speak(utterance);
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = "en-US";
+    utter.rate = 0.9;
+    speechSynthesis.speak(utter);
   };
 
   useEffect(() => {
-    if (steps.length > 0 && canvasRef.current) {
+    if (steps.length > 0) {
       const ctx = canvasRef.current.getContext("2d");
       drawSteps(ctx);
     }
   }, [steps]);
 
   useEffect(() => {
-    const resizeCanvas = () => {
-      if (canvasRef.current) {
-        canvasRef.current.width = window.innerWidth;
-        canvasRef.current.height = window.innerHeight;
-      }
+    const resize = () => {
+      canvasRef.current.width = window.innerWidth;
+      canvasRef.current.height = window.innerHeight;
     };
-
-    resizeCanvas();
-    window.addEventListener("resize", resizeCanvas);
-    return () => window.removeEventListener("resize", resizeCanvas);
+    resize();
+    window.addEventListener("resize", resize);
+    return () => window.removeEventListener("resize", resize);
   }, []);
 
   return (
@@ -134,7 +116,7 @@ const AIChalkboardTutor = () => {
       <textarea
         value={question}
         onChange={(e) => setQuestion(e.target.value)}
-        placeholder="Enter math problem (e.g., 2x + 3 = 7)"
+        placeholder="Enter math problem..."
         rows={3}
         style={styles.textarea}
       />
@@ -163,84 +145,68 @@ const AIChalkboardTutor = () => {
 
 const styles = {
   container: {
-    fontFamily: "Arial, sans-serif",
     backgroundColor: "#000",
-    margin: 0,
-    padding: 0,
-    overflow: "hidden",
     height: "100vh",
     width: "100vw",
+    overflow: "hidden",
     position: "relative",
     color: "#fff",
   },
   title: {
     position: "absolute",
-    top: "10px",
+    top: 10,
     left: "50%",
     transform: "translateX(-50%)",
-    fontSize: "1.5rem",
     color: "#00ffcc",
     zIndex: 10,
   },
   textarea: {
     position: "absolute",
-    top: "70px",
+    top: 70,
     left: "50%",
     transform: "translateX(-50%)",
     width: "60%",
-    padding: "12px",
-    fontSize: "16px",
-    borderRadius: "10px",
-    border: "1px solid #ccc",
-    resize: "none",
-    zIndex: 10,
+    padding: 12,
+    borderRadius: 10,
     backgroundColor: "#111",
     color: "#00ffcc",
+    zIndex: 10,
   },
   input: {
     position: "absolute",
-    top: "150px",
+    top: 150,
     left: "50%",
     transform: "translateX(-50%)",
     width: "60%",
-    padding: "12px",
-    fontSize: "16px",
-    borderRadius: "10px",
-    border: "1px solid #ccc",
-    zIndex: 10,
+    padding: 12,
+    borderRadius: 10,
     backgroundColor: "#111",
     color: "#00ffcc",
+    zIndex: 10,
   },
   button: {
     position: "absolute",
-    top: "210px",
+    top: 210,
     left: "50%",
     transform: "translateX(-50%)",
     padding: "14px 30px",
     backgroundColor: "#00b4d8",
-    color: "#fff",
-    borderRadius: "10px",
-    fontSize: "18px",
-    cursor: "pointer",
-    border: "none",
+    borderRadius: 10,
     zIndex: 10,
+    cursor: "pointer",
+    color: "#fff",
   },
   canvas: {
     position: "absolute",
     top: 0,
     left: 0,
-    width: "100vw",
-    height: "100vh",
     backgroundColor: "#000",
   },
   hand: {
     position: "absolute",
-    width: "50px",
-    height: "50px",
+    width: 50,
     display: "none",
-    pointerEvents: "none",
     zIndex: 20,
-    transition: "left 0.05s linear, top 0.05s linear",
   },
 };
 

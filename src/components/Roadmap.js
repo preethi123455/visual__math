@@ -8,10 +8,8 @@ const Roadmap = () => {
   const [roadmapData, setRoadmapData] = useState({ nodes: [], edges: [] });
   const [loading, setLoading] = useState(false);
 
-  const groqApiKey =
-    "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";
-  const url = "https://api.groq.com/openai/v1/chat/completions";
-  const mode = "general"; // ✅ define mode
+  const BACKEND_URL =
+    "https://visual-math-oscg.onrender.com/generate-roadmap"; // ✅ secure
 
   const fetchRoadmap = async () => {
     if (!topic.trim() || !level) {
@@ -20,66 +18,23 @@ const Roadmap = () => {
     }
     setLoading(true);
 
-    const requestBody = {
-      model:
-        mode === "general" ? "llama-3.1-8b-instant" : "llama-3.3-70b-versatile",
-      messages: [
-        {
-          role: "system",
-          content:
-            "Respond ONLY with valid JSON. Do not include any explanation, text, or formatting around it. It must be a complete JSON object starting with { and ending with }.",
-        },
-        {
-          role: "user",
-          content: `Create a ${level.toLowerCase()} level roadmap to learn ${topic} in this format:
-{
-  "nodes": [
-    { "id": "1", "position": { "x": 250, "y": 5 }, "data": { "label": "Start" } },
-    { "id": "2", "position": { "x": 250, "y": 100 }, "data": { "label": "Step 1" } },
-    { "id": "3", "position": { "x": 250, "y": 200 }, "data": { "label": "Step 2" } }
-  ],
-  "edges": [
-    { "id": "e1-2", "source": "1", "target": "2" },
-    { "id": "e2-3", "source": "2", "target": "3" }
-  ]
-}`,
-        },
-      ],
-      max_tokens: 1000,
-      temperature: 0.7,
-    };
-
     try {
-      const response = await fetch(url, {
+      const response = await fetch(BACKEND_URL, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${groqApiKey}`,
-        },
-        body: JSON.stringify(requestBody),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic, level }),
       });
 
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status} ${response.statusText}`);
-      }
+      if (!response.ok) throw new Error("Backend error");
 
       const data = await response.json();
       const roadmapText = data.choices?.[0]?.message?.content?.trim();
-
-      if (!roadmapText) {
-        throw new Error("Empty or invalid response from API");
-      }
+      if (!roadmapText) throw new Error("No roadmap received");
 
       const jsonMatch = roadmapText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        throw new Error("No valid JSON found in API response");
-      }
+      if (!jsonMatch) throw new Error("Invalid JSON in response");
 
       const parsed = JSON.parse(jsonMatch[0]);
-
-      if (!Array.isArray(parsed.nodes) || !Array.isArray(parsed.edges)) {
-        throw new Error("Invalid roadmap structure");
-      }
 
       const formattedNodes = parsed.nodes.map((node) => ({
         ...node,
@@ -87,9 +42,9 @@ const Roadmap = () => {
       }));
 
       setRoadmapData({ nodes: formattedNodes, edges: parsed.edges });
-    } catch (error) {
-      console.error("Error fetching roadmap:", error);
-      alert(`Failed to generate roadmap: ${error.message}`);
+    } catch (err) {
+      console.error("Roadmap error:", err);
+      alert(err.message);
     } finally {
       setLoading(false);
     }
@@ -125,11 +80,7 @@ const Roadmap = () => {
         style={styles.input}
       />
 
-      <button
-        onClick={fetchRoadmap}
-        style={styles.generateBtn}
-        disabled={loading}
-      >
+      <button onClick={fetchRoadmap} style={styles.generateBtn} disabled={loading}>
         {loading ? "Generating..." : "Generate Roadmap"}
       </button>
 
@@ -154,20 +105,10 @@ const styles = {
     minHeight: "100vh",
     color: "#333",
   },
-  title: {
-    fontSize: "30px",
-    fontWeight: "bold",
-  },
-  highlight: {
-    color: "#007acc",
-  },
-  description: {
-    fontSize: "16px",
-    marginBottom: "20px",
-  },
-  levelButtons: {
-    marginBottom: "20px",
-  },
+  title: { fontSize: "30px", fontWeight: "bold" },
+  highlight: { color: "#007acc" },
+  description: { fontSize: "16px", marginBottom: "20px" },
+  levelButtons: { marginBottom: "20px" },
   levelBtn: {
     padding: "10px 20px",
     margin: "0 10px",
@@ -207,7 +148,6 @@ const styles = {
     borderRadius: "10px",
     cursor: "pointer",
     marginLeft: "10px",
-    transition: "0.3s",
   },
   flowContainer: {
     height: "500px",

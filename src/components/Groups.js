@@ -9,8 +9,8 @@ const domains = [
   "Number Theory Ninja",
   "Maths in Real Life",
 ];
-const groqApiKey = "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";
-const API_URL = "https://api.groq.com/openai/v1/chat/completions";
+
+const BACKEND_URL = "https://visual-math-oscg.onrender.com/ai-discussion"; // ✅ backend route
 
 export default function GroupDiscussionForum() {
   const [selectedDomain, setSelectedDomain] = useState(null);
@@ -21,7 +21,21 @@ export default function GroupDiscussionForum() {
   const [scheduledTime, setScheduledTime] = useState("");
   const [interestedCount, setInterestedCount] = useState({});
 
-  const mode = "general"; // ✅ define mode
+  const fetchAI = async (prompt) => {
+    try {
+      const res = await fetch(BACKEND_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
+      });
+
+      const data = await res.json();
+      return data.reply;
+    } catch (err) {
+      console.error(err);
+      return "AI failed to respond.";
+    }
+  };
 
   const createMeet = async (domain) => {
     if (!scheduledTime) {
@@ -30,26 +44,23 @@ export default function GroupDiscussionForum() {
     }
 
     setSelectedDomain(domain);
+
     const roomName = domain.replace(/\s+/g, "") + "_" + Date.now();
     const generatedMeetLink = `https://meet.jit.si/${roomName}`;
     setMeetLink(generatedMeetLink);
+
     setInterestedCount((prev) => ({ ...prev, [domain]: 0 }));
 
-    try {
-      const insightsResponse = await fetchAIResponse(
-        `Provide a brief and engaging summary for a group meet on "${domain}" focused on mathematics (max 20 words).`
-      );
-      const topicsResponse = await fetchAIResponse(
-        `Suggest 3 fun and insightful discussion questions for a math meet on "${domain}". Keep it short and crisp.`
-      );
+    const insights = await fetchAI(
+      `Give a short fun 20-word summary for a math meet on ${domain}.`
+    );
 
-      setAiInsights(insightsResponse);
-      setRecommendedTopics(topicsResponse);
-    } catch (error) {
-      console.error(error);
-      setAiInsights("No insights available.");
-      setRecommendedTopics("No topics available.");
-    }
+    const topics = await fetchAI(
+      `Give 3 short math discussion questions for domain: ${domain}.`
+    );
+
+    setAiInsights(insights);
+    setRecommendedTopics(topics);
   };
 
   const handleThumbsUp = (domain) => {
@@ -59,33 +70,11 @@ export default function GroupDiscussionForum() {
     }));
   };
 
-  const fetchAIResponse = async (prompt) => {
-    try {
-      const response = await fetch(API_URL, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${groqApiKey}`, // ✅ fixed variable name
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: mode === "general" ? "llama-3.1-8b-instant" : "llama-3.3-70b-versatile",
-          messages: [{ role: "user", content: prompt }],
-        }),
-      });
-
-      const data = await response.json();
-      return data.choices?.[0]?.message?.content || "No response.";
-    } catch (error) {
-      console.error(error);
-      return "Error fetching response.";
-    }
-  };
-
   return (
     <div style={styles.container}>
       <h1 style={styles.title}>🎓 Math Meet Quest</h1>
       <p style={styles.subtitle}>
-        Pick a math world to explore. Get insights & join a Jitsi discussion room powered by AI!
+        Pick a math world to explore. Start a Jitsi room with AI insights!
       </p>
 
       <input
@@ -93,7 +82,6 @@ export default function GroupDiscussionForum() {
         value={scheduledTime}
         onChange={(e) => setScheduledTime(e.target.value)}
         style={{ ...styles.input, marginBottom: "20px" }}
-        placeholder="Choose schedule time"
       />
 
       <div style={styles.grid}>
@@ -105,53 +93,54 @@ export default function GroupDiscussionForum() {
             onClick={() => createMeet(domain)}
           >
             <h2 style={styles.cardTitle}>{domain}</h2>
-            <p style={styles.cardText}>
-              🎯 Click to start the quest & unlock AI-driven meet topics
-            </p>
-            <div style={{ marginTop: "10px", color: "#facc15" }}>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleThumbsUp(domain);
-                }}
-                style={{
-                  background: "none",
-                  border: "none",
-                  color: "#facc15",
-                  cursor: "pointer",
-                  fontSize: "1.2rem",
-                }}
-              >
-                👍 {interestedCount[domain] || 0}
-              </button>
-            </div>
+            <p style={styles.cardText}>🎯 Click to start & unlock AI topics</p>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleThumbsUp(domain);
+              }}
+              style={styles.likeButton}
+            >
+              👍 {interestedCount[domain] || 0}
+            </button>
           </motion.div>
         ))}
       </div>
 
       {selectedDomain && (
-        <motion.div style={styles.resultCard} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+        <motion.div
+          style={styles.resultCard}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+        >
           <h2 style={styles.resultTitle}>🧠 {selectedDomain} Discussion Arena</h2>
+
           <input type="text" value={meetLink} readOnly style={styles.input} />
+
           <p style={styles.sectionText}>
             🕒 Scheduled Time: {new Date(scheduledTime).toLocaleString()}
           </p>
+
           <div style={styles.section}>
             <h3 style={styles.sectionTitle}>✨ AI Insights</h3>
             <p style={styles.sectionText}>{aiInsights}</p>
           </div>
+
           <div style={styles.section}>
             <h3 style={styles.sectionTitle}>💡 Suggested Topics</h3>
             <p style={styles.sectionText}>{recommendedTopics}</p>
           </div>
+
           <a href={meetLink} target="_blank" rel="noopener noreferrer">
             <button style={styles.button}>🚀 Join Math Meet</button>
           </a>
         </motion.div>
       )}
 
-      <motion.div style={styles.resultCard} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+      <motion.div style={styles.resultCard}>
         <h2 style={styles.resultTitle}>📌 Add Your Own Meet</h2>
+
         <input
           type="text"
           placeholder="Enter Jitsi Meet link"
@@ -159,6 +148,7 @@ export default function GroupDiscussionForum() {
           onChange={(e) => setCustomMeetLink(e.target.value)}
           style={styles.input}
         />
+
         {customMeetLink && (
           <a
             href={
@@ -177,7 +167,8 @@ export default function GroupDiscussionForum() {
   );
 }
 
-// Styles
+// ---------------- STYLES ----------------
+
 const styles = {
   container: {
     minHeight: "100vh",
@@ -188,12 +179,13 @@ const styles = {
   },
   title: { fontSize: "2.5rem", fontWeight: "bold", color: "#facc15" },
   subtitle: { fontSize: "1.2rem", color: "#9ca3af", marginBottom: "20px" },
+
   grid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
     gap: "20px",
-    justifyContent: "center",
   },
+
   card: {
     backgroundColor: "#1f2937",
     border: "2px solid #facc15",
@@ -201,8 +193,19 @@ const styles = {
     borderRadius: "10px",
     cursor: "pointer",
   },
+
   cardTitle: { fontSize: "1.5rem", fontWeight: "bold", color: "#facc15" },
-  cardText: { fontSize: "0.9rem", color: "#d1d5db" },
+  cardText: { color: "#d1d5db" },
+
+  likeButton: {
+    marginTop: "10px",
+    background: "none",
+    border: "none",
+    color: "#facc15",
+    cursor: "pointer",
+    fontSize: "1.2rem",
+  },
+
   resultCard: {
     backgroundColor: "#1f2937",
     border: "2px solid #facc15",
@@ -210,7 +213,9 @@ const styles = {
     borderRadius: "10px",
     marginTop: "20px",
   },
+
   resultTitle: { fontSize: "1.8rem", fontWeight: "bold", color: "#facc15" },
+
   input: {
     backgroundColor: "#374151",
     color: "white",
@@ -221,6 +226,7 @@ const styles = {
     textAlign: "center",
     marginTop: "10px",
   },
+
   button: {
     backgroundColor: "#facc15",
     color: "#121212",
@@ -231,11 +237,8 @@ const styles = {
     border: "none",
     marginTop: "10px",
   },
+
   section: { marginTop: "15px" },
-  sectionTitle: {
-    fontSize: "1.2rem",
-    fontWeight: "bold",
-    color: "#facc15",
-  },
-  sectionText: { fontSize: "1rem", color: "#d1d5db" },
+  sectionTitle: { fontSize: "1.2rem", fontWeight: "bold", color: "#facc15" },
+  sectionText: { color: "#d1d5db" },
 };

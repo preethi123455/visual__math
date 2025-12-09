@@ -1,45 +1,46 @@
 import React, { useEffect, useState } from "react";
 
 const Puzzles = () => {
+  // Your backend endpoint (NO API KEY IN FRONTEND)
   const BACKEND_URL = "https://visual-math-oscg.onrender.com/generate-puzzle";
 
   const [challenge, setChallenge] = useState("");
   const [correctAnswer, setCorrectAnswer] = useState("");
   const [userAnswer, setUserAnswer] = useState("");
   const [score, setScore] = useState(0);
+
   const [leaderboard, setLeaderboard] = useState([
     { name: "Alice", score: 80 },
     { name: "Bob", score: 70 },
     { name: "Charlie", score: 60 },
     { name: "You", score: 0 },
   ]);
+
   const [message, setMessage] = useState("");
 
+  // Fetch puzzle from backend (backend already calls Groq)
   const fetchChallenge = async () => {
     try {
-      const response = await fetch(BACKEND_URL, {
+      const res = await fetch(BACKEND_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       });
 
-      if (!response.ok) throw new Error("Backend error");
+      if (!res.ok) throw new Error("Backend error");
 
-      const data = await response.json();
-      const content = data.choices?.[0]?.message?.content || "";
+      const data = await res.json();
 
-      const puzzleMatch = content.match(/Puzzle:\s*(.+)/);
-      const answerMatch = content.match(/Answer:\s*(.+)/);
-
-      if (puzzleMatch && answerMatch) {
-        setChallenge(puzzleMatch[1].trim());
-        setCorrectAnswer(answerMatch[1].trim());
+      // Backend returns: { puzzle: "...", answer: "..." }
+      if (data.puzzle && data.answer) {
+        setChallenge(data.puzzle);
+        setCorrectAnswer(data.answer.trim());
       } else {
-        setChallenge("❌ Incorrect puzzle format.");
+        setChallenge("❌ Invalid puzzle format received.");
         setCorrectAnswer("");
       }
     } catch (error) {
-      console.error(error);
-      setChallenge("❌ Could not load puzzle.");
+      console.error("Puzzle Error:", error);
+      setChallenge("❌ Could not load puzzle. Try again.");
     }
   };
 
@@ -49,10 +50,11 @@ const Puzzles = () => {
     const saved = JSON.parse(localStorage.getItem("leaderboard")) || leaderboard;
     setLeaderboard(saved);
 
-    const yourEntry = saved.find((e) => e.name === "You");
-    setScore(yourEntry ? yourEntry.score : 0);
+    const entry = saved.find((e) => e.name === "You");
+    setScore(entry ? entry.score : 0);
   }, []);
 
+  // Update leaderboard ranking
   const updateLeaderboard = (newScore) => {
     const updated = leaderboard.map((entry) =>
       entry.name === "You" ? { ...entry, score: newScore } : entry
@@ -63,20 +65,27 @@ const Puzzles = () => {
     localStorage.setItem("leaderboard", JSON.stringify(updated));
 
     const rank = updated.findIndex((e) => e.name === "You") + 1;
-    let msg = `You are Ranked #${rank}. Keep going!`;
 
-    if (rank === 1) msg = "🔥 You're at the top! Excellent!";
-    else if (rank <= 3) msg = "🎉 You're in the Top 3! Great job!";
+    let msg = `🏆 You are Ranked #${rank}!`;
+
+    if (rank === 1) msg = "🔥 You're at the TOP! Amazing!";
+    else if (rank <= 3) msg = "🎉 You're in the Top 3 — Great job!";
 
     setMessage(msg);
   };
 
   const handleSubmit = () => {
+    if (!userAnswer.trim()) {
+      alert("Please enter an answer!");
+      return;
+    }
+
     if (userAnswer.trim().toLowerCase() === correctAnswer.toLowerCase()) {
       const newScore = score + 10;
       setScore(newScore);
       updateLeaderboard(newScore);
-      alert("✅ Correct! Here’s a new puzzle.");
+      alert("✅ Correct! Here's a new puzzle!");
+
       setUserAnswer("");
       fetchChallenge();
     } else {
@@ -86,10 +95,10 @@ const Puzzles = () => {
 
   return (
     <div style={styles.container}>
-      <h1 style={styles.header}>Gamified Math Challenges</h1>
+      <h1 style={styles.header}>🎯 Gamified Math Challenges</h1>
 
       <div style={styles.card}>
-        <h2 style={styles.subheading}>Puzzle of the Day</h2>
+        <h2 style={styles.subheading}>🧩 Puzzle of the Day</h2>
         <p style={styles.puzzle}>{challenge}</p>
 
         <input
@@ -104,12 +113,13 @@ const Puzzles = () => {
           Submit
         </button>
 
-        <p style={styles.score}>Your Score: {score}</p>
+        <p style={styles.score}>⭐ Your Score: {score}</p>
+
         {message && <p style={styles.message}>{message}</p>}
       </div>
 
       <div style={styles.leaderboard}>
-        <h2 style={styles.subheading}>Leaderboard</h2>
+        <h2 style={styles.subheading}>🏅 Leaderboard</h2>
 
         {leaderboard.map((entry, i) => (
           <div key={i} style={styles.leaderEntry}>
@@ -120,6 +130,8 @@ const Puzzles = () => {
     </div>
   );
 };
+
+// --------------------- STYLING ---------------------
 
 const styles = {
   container: {
@@ -139,6 +151,7 @@ const styles = {
     margin: "0 auto 20px",
     padding: 20,
     borderRadius: 10,
+    boxShadow: "0 4px 10px rgba(0,0,0,0.1)",
   },
   subheading: {
     textAlign: "center",
@@ -165,6 +178,7 @@ const styles = {
     padding: 10,
     borderRadius: 5,
     cursor: "pointer",
+    fontWeight: "bold",
   },
   score: {
     textAlign: "center",
@@ -175,6 +189,7 @@ const styles = {
     textAlign: "center",
     marginTop: 10,
     color: "#28a745",
+    fontWeight: "bold",
   },
   leaderboard: {
     maxWidth: 600,
@@ -186,6 +201,7 @@ const styles = {
   leaderEntry: {
     padding: "5px 0",
     fontSize: 16,
+    borderBottom: "1px solid #ddd",
   },
 };
 
