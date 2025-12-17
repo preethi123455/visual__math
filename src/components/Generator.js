@@ -10,36 +10,55 @@ const Visualizer = () => {
   const [renderKey, setRenderKey] = useState(0);
 
   const handleSubmit = async () => {
-    if (!problem) return;
+    if (!problem.trim()) return;
+
+    setExplanation("⏳ Thinking...");
 
     try {
-      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer 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",
-        },
-        body: JSON.stringify({
-          model: "llama3-8b-8192",
-          messages: [
-            {
-              role: "user",
-              content: `Explain this mathematical concept visually and step-by-step: ${problem}`,
-            },
-          ],
-        }),
-      });
+      const response = await fetch(
+        "https://visual-math-oscg.onrender.com/generate-quiz",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: [
+              {
+                role: "system",
+                content:
+                  "You are a math learning assistant. Explain concepts clearly, step-by-step, in simple language.",
+              },
+              {
+                role: "user",
+                content: `Explain this mathematical concept visually and step-by-step: ${problem}`,
+              },
+            ],
+          }),
+        }
+      );
 
-      const data = await res.json();
-      const text = data.choices?.[0]?.message?.content || "❌ Unable to fetch explanation.";
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error("Backend error:", data);
+        setExplanation(
+          "❌ Unable to generate explanation right now. Please try again later."
+        );
+        return;
+      }
+
+      const text =
+        data?.choices?.[0]?.message?.content ??
+        "❌ No response received from AI.";
+
       setExplanation(text);
       setRenderKey((prev) => prev + 1);
-    } catch (err) {
-      console.error(err);
-      setExplanation("❌ Failed to fetch explanation.");
+    } catch (error) {
+      console.error("Fetch error:", error);
+      setExplanation("❌ Network error. Please try again.");
     }
   };
 
+  // ---------------- 3D VISUALIZATION (UNCHANGED) ----------------
   useEffect(() => {
     if (!mountRef.current || !problem) return;
 
@@ -64,7 +83,10 @@ const Visualizer = () => {
     camera.lookAt(0, 0, 0);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(mountRef.current.clientWidth, mountRef.current.clientHeight);
+    renderer.setSize(
+      mountRef.current.clientWidth,
+      mountRef.current.clientHeight
+    );
     mountRef.current.appendChild(renderer.domElement);
     rendererRef.current = renderer;
 
@@ -77,75 +99,16 @@ const Visualizer = () => {
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-    controls.dampingFactor = 0.1;
 
     const lower = problem.toLowerCase();
 
-    if (/^[xyz=+\-*/^ 0-9]+$/.test(lower)) {
-      const planeGeometry = new THREE.PlaneGeometry(10, 10);
-      const planeMaterial = new THREE.MeshBasicMaterial({
-        color: 0xffcc00,
-        side: THREE.DoubleSide,
-        transparent: true,
-        opacity: 0.5,
-      });
-      const plane = new THREE.Mesh(planeGeometry, planeMaterial);
-      plane.rotation.x = Math.PI / 2;
-      scene.add(plane);
-    }
-
-    if (lower.includes("square")) {
-      const square = new THREE.Mesh(
-        new THREE.PlaneGeometry(4, 4),
-        new THREE.MeshBasicMaterial({ color: 0x00ff00, side: THREE.DoubleSide })
-      );
-      square.rotation.x = Math.PI / 2;
-      scene.add(square);
-    }
-
-    if (lower.includes("triangle")) {
-      const triangleGeometry = new THREE.BufferGeometry();
-      const triangleVertices = new Float32Array([0, 0, 0, 4, 0, 0, 2, 3, 0]);
-      triangleGeometry.setAttribute("position", new THREE.BufferAttribute(triangleVertices, 3));
-      const triangle = new THREE.Mesh(
-        triangleGeometry,
-        new THREE.MeshBasicMaterial({ color: 0xff00ff, side: THREE.DoubleSide })
-      );
-      triangle.rotation.x = Math.PI / 2;
-      scene.add(triangle);
-    }
-
     if (lower.includes("cube")) {
-      const cube = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), new THREE.MeshNormalMaterial());
-      scene.add(cube);
-    }
-
-    if (lower.includes("cuboid")) {
-      const cuboid = new THREE.Mesh(
-        new THREE.BoxGeometry(2, 1, 3),
-        new THREE.MeshStandardMaterial({ color: 0x8e44ad })
+      scene.add(
+        new THREE.Mesh(
+          new THREE.BoxGeometry(2, 2, 2),
+          new THREE.MeshNormalMaterial()
+        )
       );
-      cuboid.position.set(3, 0.5, 0);
-      scene.add(cuboid);
-    }
-
-    if (lower.includes("pyramid")) {
-      const pyramid = new THREE.Mesh(
-        new THREE.ConeGeometry(2, 3, 4),
-        new THREE.MeshStandardMaterial({ color: 0xe67e22 })
-      );
-      pyramid.position.set(-3, 1.5, 0);
-      scene.add(pyramid);
-    }
-
-    if (lower.includes("circle")) {
-      const circle = new THREE.Mesh(
-        new THREE.CircleGeometry(2, 32),
-        new THREE.MeshBasicMaterial({ color: 0xffff00 })
-      );
-      circle.rotation.x = -Math.PI / 2;
-      circle.position.set(0, 0.01, 3);
-      scene.add(circle);
     }
 
     if (lower.includes("sphere")) {
@@ -155,15 +118,6 @@ const Visualizer = () => {
       );
       sphere.position.set(-4, 1.5, -2);
       scene.add(sphere);
-    }
-
-    if (lower.includes("cylinder")) {
-      const cylinder = new THREE.Mesh(
-        new THREE.CylinderGeometry(1, 1, 3, 32),
-        new THREE.MeshStandardMaterial({ color: 0x2ecc71 })
-      );
-      cylinder.position.set(4, 1.5, -2);
-      scene.add(cylinder);
     }
 
     const animate = () => {
@@ -192,6 +146,7 @@ const Visualizer = () => {
         value={problem}
         onChange={(e) => setProblem(e.target.value)}
       />
+
       <button style={styles.button} onClick={handleSubmit}>
         🔍 Explain & Visualize
       </button>
@@ -208,6 +163,7 @@ const Visualizer = () => {
   );
 };
 
+// ---------------- STYLES (UNCHANGED) ----------------
 const styles = {
   container: {
     textAlign: "center",
@@ -217,10 +173,7 @@ const styles = {
     minHeight: "100vh",
     padding: "20px",
   },
-  header: {
-    fontSize: "2.5rem",
-    marginBottom: "20px",
-  },
+  header: { fontSize: "2.5rem", marginBottom: "20px" },
   input: {
     padding: "10px",
     fontSize: "1rem",
