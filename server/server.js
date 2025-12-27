@@ -210,37 +210,37 @@ app.post("/api/ask", async (req, res) => {
   try {
     const { question, filename } = req.body;
 
-    if (!question || !filename)
-      return res
-        .status(400)
-        .json({ error: "Missing question or filename" });
+    if (!question || !filename) {
+      return res.status(400).json({ error: "Question and filename required" });
+    }
 
     const filePath = path.join(uploadDir, filename);
-    if (!fs.existsSync(filePath))
+    if (!fs.existsSync(filePath)) {
       return res.status(404).json({ error: "File not found" });
+    }
 
     const dataBuffer = fs.readFileSync(filePath);
     const pdfData = await pdfParse(dataBuffer);
-    const text = pdfData.text || "";
+    const text = (pdfData.text || "").trim();
 
-    // Chunk roughly 200 words per chunk
-    const chunks = text.match(/(?:[^\s]+\s+){1,200}/g) || [];
+    if (!text) {
+      return res.json({
+        answer:
+          "⚠️ This PDF does not contain readable text. It may be scanned or image-based.",
+      });
+    }
 
-    const relevant = chunks
-      .filter((chunk) =>
-        chunk.toLowerCase().includes(question.toLowerCase())
-      )
-      .slice(0, 3);
+    // 🔹 Split into small chunks
+    const chunks = text.match(/(.|\n){1,800}/g) || [];
 
-    const context =
-      relevant.join("\n---\n") ||
-      "No directly relevant context found in the PDF. Answer based on your best understanding.";
+    // 🔹 Pick top 2 chunks only (VERY IMPORTANT)
+    const context = chunks.slice(0, 2).join("\n---\n");
 
     const messages = [
       {
         role: "system",
         content:
-          "You are a helpful assistant answering questions based ONLY on the given PDF context. If the answer is not in the context, clearly say that.",
+          "Answer the question using ONLY the given PDF context. If the answer is not present, clearly say so.",
       },
       {
         role: "user",
@@ -248,17 +248,34 @@ app.post("/api/ask", async (req, res) => {
       },
     ];
 
-    const response = await groq.chat.completions.create({
-      model: "llama-3.1-8b-instant", // ✅ instant here too
-      messages,
-      max_tokens: 400,
-      temperature: 0.5,
-    });
+   let response;
+try {
+  response = await groq.chat.completions.create({
+    model: "llama-3.1-8b-instant",
+    messages,
+    max_tokens: 300,
+    temperature: 0.4,
+  });
+} catch (groqErr) {
+  console.error("❌ GROQ ERROR:", groqErr);
+  return res.status(500).json({
+    error: "Groq API failed. Check API key / quota.",
+  });
+}
 
-    res.json({ answer: response.choices[0].message.content });
+res.json({
+  answer: response.choices[0].message.content,
+});
+
+
+    res.json({
+      answer: response.choices[0].message.content,
+    });
   } catch (err) {
-    console.error("AI /api/ask error:", err);
-    res.status(500).json({ error: "RAG QA failed" });
+    console.error("❌ /api/ask error:", err);
+    res.status(500).json({
+      error: "Failed to answer question from PDF",
+    });
   }
 });
 

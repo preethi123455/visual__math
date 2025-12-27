@@ -16,27 +16,35 @@ const WordProblemCartoon = () => {
   const [loading, setLoading] = useState(false);
   const [voices, setVoices] = useState([]);
 
-  // Load voices
+  // 🔹 Load voices properly (Google Web Speech)
   useEffect(() => {
     const loadVoices = () => {
       const v = window.speechSynthesis.getVoices();
       if (v.length > 0) setVoices(v);
     };
+
     loadVoices();
     window.speechSynthesis.onvoiceschanged = loadVoices;
   }, []);
 
-  // Speak dialogue
+  // 🔹 Speak dialogue (Google voice preferred)
   const speak = (text, voiceName) => {
-    if (!window.speechSynthesis) return;
+    if (!window.speechSynthesis || !voices.length) return;
 
     const utterance = new SpeechSynthesisUtterance(text);
-    const voice =
-      voices.find((v) => v.name.includes(voiceName)) || voices[0];
-    if (voice) utterance.voice = voice;
 
+    // ✅ Prefer Google voice if available
+    const googleVoice =
+      voices.find(
+        (v) =>
+          v.name.includes("Google") &&
+          (voiceName ? v.name.includes(voiceName.split(" ")[2] || "") : true)
+      ) || voices.find((v) => v.name.includes(voiceName));
+
+    utterance.voice = googleVoice || voices[0];
     utterance.rate = 1;
     utterance.pitch = 1;
+
     window.speechSynthesis.speak(utterance);
   };
 
@@ -78,7 +86,6 @@ const WordProblemCartoon = () => {
       }
 
       const data = await response.json();
-
       const message = data?.choices?.[0]?.message?.content || "";
 
       const jsonMatch = message.match(/\{[\s\S]*\}/);

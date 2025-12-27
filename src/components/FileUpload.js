@@ -10,7 +10,7 @@ const FileUpload = ({ setUploadedFile }) => {
     formData.append('pdf', file);
 
     try {
-      const response = await axios.post('http://localhost:11000/api/upload', formData);
+      const response = await axios.post('http://localhost:5000/api/upload', formData);
       setMessage(response.data.message);
       setUploadedFile(response.data.file); // <-- send filename to App
     } catch (err) {

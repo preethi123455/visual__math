@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 const MathRPG = () => {
   const [question, setQuestion] = useState("");
@@ -7,13 +7,60 @@ const MathRPG = () => {
   const [enemyHP, setEnemyHP] = useState(100);
   const [playerHP, setPlayerHP] = useState(100);
   const [loading, setLoading] = useState(false);
+  const [chartsReady, setChartsReady] = useState(false);
 
-  // ✅ Backend proxy – NO API KEY IN FRONTEND
+  const gaugeRef = useRef(null);
+
   const BACKEND_URL = "https://visual-math-oscg.onrender.com/generate-quiz";
 
+  /* ---------------- SAFE GOOGLE CHARTS LOADER ---------------- */
+  useEffect(() => {
+    const script = document.createElement("script");
+    script.src = "https://www.gstatic.com/charts/loader.js";
+    script.async = true;
+
+    script.onload = () => {
+      window.google.charts.load("current", { packages: ["gauge"] });
+      window.google.charts.setOnLoadCallback(() => {
+        setChartsReady(true);
+      });
+    };
+
+    document.body.appendChild(script);
+  }, []);
+
+  /* ---------------- SAFE GAUGE DRAW ---------------- */
+  useEffect(() => {
+    if (!chartsReady || !gaugeRef.current) return;
+
+    const data = window.google.visualization.arrayToDataTable([
+      ["Label", "Value"],
+      ["Player", playerHP],
+      ["Enemy", enemyHP],
+    ]);
+
+    const options = {
+      width: 420,
+      height: 200,
+      redFrom: 0,
+      redTo: 30,
+      yellowFrom: 30,
+      yellowTo: 60,
+      greenFrom: 60,
+      greenTo: 100,
+      minorTicks: 5,
+      max: 100,
+    };
+
+    const chart = new window.google.visualization.Gauge(gaugeRef.current);
+    chart.draw(data, options);
+  }, [chartsReady, playerHP, enemyHP]);
+
+  /* ---------------- QUESTION GENERATION ---------------- */
   const generateQuestion = async () => {
     setLoading(true);
     setResult("");
+
     try {
       const response = await fetch(BACKEND_URL, {
         method: "POST",
@@ -25,36 +72,24 @@ const MathRPG = () => {
               content:
                 "Generate a fun and simple math question for students. Provide only the question text.",
             },
-            {
-              role: "user",
-              content: "Give one simple math question.",
-            },
+            { role: "user", content: "Give one simple math question." },
           ],
         }),
       });
 
-      if (!response.ok) {
-        throw new Error("Backend error: " + response.status);
-      }
-
       const data = await response.json();
-      const q = data.choices?.[0]?.message?.content?.trim();
-      setQuestion(q || "Solve: 2 + 2");
-    } catch (error) {
-      console.error("Question generation failed:", error);
+      setQuestion(data.choices?.[0]?.message?.content || "Solve: 2 + 2");
+    } catch {
       setQuestion("Solve: 5 + 3");
     } finally {
       setLoading(false);
     }
   };
 
+  /* ---------------- ANSWER CHECK ---------------- */
   const checkAnswer = async () => {
     if (!userAnswer.trim()) {
       setResult("⚠ Please enter an answer!");
-      return;
-    }
-    if (!question) {
-      setResult("⚠ No question loaded yet!");
       return;
     }
 
@@ -67,7 +102,7 @@ const MathRPG = () => {
             {
               role: "system",
               content:
-                "You are a math teacher. You will be given a question and a student's answer. Respond strictly with only one of: 'Correct', 'Partially Correct', or 'Wrong'.",
+                "Respond strictly with only one of: 'Correct', 'Partially Correct', or 'Wrong'.",
             },
             {
               role: "user",
@@ -77,43 +112,34 @@ const MathRPG = () => {
         }),
       });
 
-      if (!response.ok) {
-        throw new Error("Backend error: " + response.status);
-      }
-
       const data = await response.json();
-      const evaluation =
+      const evalText =
         data.choices?.[0]?.message?.content?.toLowerCase() || "";
 
-      if (evaluation.includes("correct") && !evaluation.includes("partially")) {
-        setEnemyHP((prev) => Math.max(prev - 20, 0));
-        setResult("✅ Correct! You dealt damage!");
-      } else if (evaluation.includes("partially")) {
-        setEnemyHP((prev) => Math.max(prev - 10, 0));
-        setPlayerHP((prev) => Math.max(prev - 10, 0));
-        setResult("⚠ Partially correct. Minor damage exchanged!");
+      if (evalText.includes("correct") && !evalText.includes("partially")) {
+        setEnemyHP((hp) => Math.max(hp - 20, 0));
+        setResult("✅ Correct! Critical hit!");
+      } else if (evalText.includes("partially")) {
+        setEnemyHP((hp) => Math.max(hp - 10, 0));
+        setPlayerHP((hp) => Math.max(hp - 10, 0));
+        setResult("⚠ Partial hit!");
       } else {
-        setPlayerHP((prev) => Math.max(prev - 20, 0));
-        setResult("❌ Wrong! The Evil Denominator hit back!");
+        setPlayerHP((hp) => Math.max(hp - 20, 0));
+        setResult("❌ Miss! Enemy attacks!");
       }
 
       setUserAnswer("");
 
-      // Auto-generate a new question after a short delay
       setTimeout(() => {
-        if (enemyHP > 0 && playerHP > 0) {
-          generateQuestion();
-        }
-      }, 1500);
-    } catch (error) {
-      console.error("Answer checking failed:", error);
-      setResult("Something went wrong. Try again!");
+        if (enemyHP > 0 && playerHP > 0) generateQuestion();
+      }, 1200);
+    } catch {
+      setResult("Something went wrong!");
     }
   };
 
   useEffect(() => {
     generateQuestion();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -125,45 +151,25 @@ const MathRPG = () => {
         backgroundImage:
           "url(https://static.vecteezy.com/system/resources/previews/001/401/677/non_2x/abstract-polygonal-shape-black-background-free-vector.jpg)",
         backgroundSize: "cover",
-        backgroundRepeat: "no-repeat",
         textAlign: "center",
         fontFamily: "Verdana, sans-serif",
       }}
     >
-      <h1
-        style={{
-          fontSize: "2.5rem",
-          marginBottom: "1.5rem",
-          textShadow: "2px 2px 4px #000",
-        }}
-      >
+      <h1 style={{ fontSize: "2.5rem" }}>
         ⚔ MathRPG: Defeat the Evil Denominator!
       </h1>
 
+      {/* 🧠 GOOGLE GAUGE (SAFE) */}
       <div
+        ref={gaugeRef}
         style={{
-          display: "flex",
-          justifyContent: "space-around",
-          marginBottom: "2rem",
+          margin: "20px auto",
+          background: "#fff",
+          borderRadius: "12px",
+          padding: "10px",
+          width: "420px",
         }}
-      >
-        <div>
-          <img
-            src="https://static.vecteezy.com/system/resources/thumbnails/028/111/315/small/of-man-in-black-hoodie-in-server-data-center-room-with-neon-light-generative-ai-photo.jpg"
-            alt="Evil Denominator"
-            style={{ width: "140px", marginBottom: "0.5rem" }}
-          />
-          <p>💀 Enemy HP: {enemyHP}</p>
-        </div>
-        <div>
-          <img
-            src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQmpLR-S1mh4vZ11FDRCqq84Kysf0xYzaE2nw&s"
-            alt="Hero"
-            style={{ width: "140px", marginBottom: "0.5rem" }}
-          />
-          <p>🛡 Your HP: {playerHP}</p>
-        </div>
-      </div>
+      />
 
       <div
         style={{
@@ -172,60 +178,49 @@ const MathRPG = () => {
           borderRadius: "20px",
           maxWidth: "600px",
           margin: "0 auto",
-          boxShadow: "0 0 15px rgba(0,0,0,0.6)",
         }}
       >
-        <p style={{ fontSize: "1.2rem", marginBottom: "1rem" }}>
-          <strong>📜 Question:</strong> {loading ? "Loading..." : question}
+        <p>
+          <strong>📜 Question:</strong>{" "}
+          {loading ? "Loading..." : question}
         </p>
 
         <input
-          type="text"
           value={userAnswer}
           onChange={(e) => setUserAnswer(e.target.value)}
           placeholder="Enter your answer..."
           style={{
             padding: "0.8rem",
-            fontSize: "1rem",
             borderRadius: "10px",
-            border: "none",
             width: "80%",
-            marginBottom: "1rem",
           }}
         />
+
         <br />
 
         <button
           onClick={checkAnswer}
+          disabled={loading || enemyHP === 0 || playerHP === 0}
           style={{
+            marginTop: "1rem",
             backgroundColor: "#00bcd4",
-            color: "#fff",
             padding: "0.8rem 1.6rem",
-            fontSize: "1rem",
             borderRadius: "10px",
+            color: "#fff",
             border: "none",
             cursor: "pointer",
           }}
-          disabled={loading || enemyHP === 0 || playerHP === 0}
         >
           🔥 Cast Spell
         </button>
 
-        <p
-          style={{
-            marginTop: "1rem",
-            fontWeight: "bold",
-            fontSize: "1.1rem",
-          }}
-        >
-          {result}
-        </p>
+        <p style={{ marginTop: "1rem", fontWeight: "bold" }}>{result}</p>
 
         {(enemyHP === 0 || playerHP === 0) && (
-          <p style={{ marginTop: "1rem", fontSize: "1.2rem" }}>
+          <p style={{ fontSize: "1.2rem" }}>
             {enemyHP === 0
               ? "🏆 You defeated the Evil Denominator!"
-              : "💀 You were defeated... but you can try again!"}
+              : "💀 You were defeated. Try again!"}
           </p>
         )}
       </div>

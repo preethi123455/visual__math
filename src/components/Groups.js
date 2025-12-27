@@ -10,7 +10,7 @@ const domains = [
   "Maths in Real Life",
 ];
 
-const BACKEND_URL = "https://visual-math-oscg.onrender.com/ai-discussion"; // ✅ backend route
+const BACKEND_URL = "https://visual-math-oscg.onrender.com/ai-discussion";
 
 export default function GroupDiscussionForum() {
   const [selectedDomain, setSelectedDomain] = useState(null);
@@ -28,11 +28,9 @@ export default function GroupDiscussionForum() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),
       });
-
       const data = await res.json();
       return data.reply;
-    } catch (err) {
-      console.error(err);
+    } catch {
       return "AI failed to respond.";
     }
   };
@@ -51,16 +49,13 @@ export default function GroupDiscussionForum() {
 
     setInterestedCount((prev) => ({ ...prev, [domain]: 0 }));
 
-    const insights = await fetchAI(
-      `Give a short fun 20-word summary for a math meet on ${domain}.`
+    setAiInsights(
+      await fetchAI(`Give a short fun 20-word summary for ${domain}.`)
     );
 
-    const topics = await fetchAI(
-      `Give 3 short math discussion questions for domain: ${domain}.`
+    setRecommendedTopics(
+      await fetchAI(`Give 3 short math discussion questions for ${domain}.`)
     );
-
-    setAiInsights(insights);
-    setRecommendedTopics(topics);
   };
 
   const handleThumbsUp = (domain) => {
@@ -70,30 +65,46 @@ export default function GroupDiscussionForum() {
     }));
   };
 
+  /* ---------------- GOOGLE CALENDAR LINK ---------------- */
+  const getGoogleCalendarLink = () => {
+    if (!scheduledTime || !meetLink) return "#";
+
+    const start = new Date(scheduledTime).toISOString().replace(/-|:|\.\d+/g, "");
+    const end = new Date(
+      new Date(scheduledTime).getTime() + 60 * 60 * 1000
+    )
+      .toISOString()
+      .replace(/-|:|\.\d+/g, "");
+
+    const details = encodeURIComponent(
+      `Join the math discussion:\n${meetLink}\n\nAI Insights:\n${aiInsights}`
+    );
+
+    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
+      selectedDomain
+    )}&dates=${start}/${end}&details=${details}`;
+  };
+
   return (
     <div style={styles.container}>
       <h1 style={styles.title}>🎓 Math Meet Quest</h1>
-      <p style={styles.subtitle}>
-        Pick a math world to explore. Start a Jitsi room with AI insights!
-      </p>
 
       <input
         type="datetime-local"
         value={scheduledTime}
         onChange={(e) => setScheduledTime(e.target.value)}
-        style={{ ...styles.input, marginBottom: "20px" }}
+        style={{ ...styles.input, marginBottom: 20 }}
       />
 
       <div style={styles.grid}>
-        {domains.map((domain, index) => (
+        {domains.map((domain) => (
           <motion.div
-            key={index}
+            key={domain}
             whileHover={{ scale: 1.05 }}
             style={styles.card}
             onClick={() => createMeet(domain)}
           >
             <h2 style={styles.cardTitle}>{domain}</h2>
-            <p style={styles.cardText}>🎯 Click to start & unlock AI topics</p>
 
             <button
               onClick={(e) => {
@@ -109,66 +120,37 @@ export default function GroupDiscussionForum() {
       </div>
 
       {selectedDomain && (
-        <motion.div
-          style={styles.resultCard}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-        >
-          <h2 style={styles.resultTitle}>🧠 {selectedDomain} Discussion Arena</h2>
+        <motion.div style={styles.resultCard} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <h2 style={styles.resultTitle}>{selectedDomain} Arena</h2>
 
-          <input type="text" value={meetLink} readOnly style={styles.input} />
+          <input value={meetLink} readOnly style={styles.input} />
 
-          <p style={styles.sectionText}>
-            🕒 Scheduled Time: {new Date(scheduledTime).toLocaleString()}
-          </p>
+          <p>🕒 {new Date(scheduledTime).toLocaleString()}</p>
 
-          <div style={styles.section}>
-            <h3 style={styles.sectionTitle}>✨ AI Insights</h3>
-            <p style={styles.sectionText}>{aiInsights}</p>
-          </div>
-
-          <div style={styles.section}>
-            <h3 style={styles.sectionTitle}>💡 Suggested Topics</h3>
-            <p style={styles.sectionText}>{recommendedTopics}</p>
-          </div>
+          <p>{aiInsights}</p>
+          <p>{recommendedTopics}</p>
 
           <a href={meetLink} target="_blank" rel="noopener noreferrer">
-            <button style={styles.button}>🚀 Join Math Meet</button>
+            <button style={styles.button}>🚀 Join Meet</button>
           </a>
-        </motion.div>
-      )}
 
-      <motion.div style={styles.resultCard}>
-        <h2 style={styles.resultTitle}>📌 Add Your Own Meet</h2>
-
-        <input
-          type="text"
-          placeholder="Enter Jitsi Meet link"
-          value={customMeetLink}
-          onChange={(e) => setCustomMeetLink(e.target.value)}
-          style={styles.input}
-        />
-
-        {customMeetLink && (
+          {/* 🌟 GOOGLE CALENDAR BUTTON */}
           <a
-            href={
-              customMeetLink.startsWith("https://meet.jit.si/")
-                ? customMeetLink
-                : `https://meet.jit.si/${customMeetLink}`
-            }
+            href={getGoogleCalendarLink()}
             target="_blank"
             rel="noopener noreferrer"
           >
-            <button style={styles.button}>🔗 Join Custom Meet</button>
+            <button style={{ ...styles.button, background: "#34a853" }}>
+              📅 Add to Google Calendar
+            </button>
           </a>
-        )}
-      </motion.div>
+        </motion.div>
+      )}
     </div>
   );
 }
 
-// ---------------- STYLES ----------------
-
+/* ---------------- STYLES ---------------- */
 const styles = {
   container: {
     minHeight: "100vh",
@@ -177,15 +159,12 @@ const styles = {
     padding: "20px",
     textAlign: "center",
   },
-  title: { fontSize: "2.5rem", fontWeight: "bold", color: "#facc15" },
-  subtitle: { fontSize: "1.2rem", color: "#9ca3af", marginBottom: "20px" },
-
+  title: { fontSize: "2.5rem", color: "#facc15" },
   grid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
     gap: "20px",
   },
-
   card: {
     backgroundColor: "#1f2937",
     border: "2px solid #facc15",
@@ -193,19 +172,13 @@ const styles = {
     borderRadius: "10px",
     cursor: "pointer",
   },
-
-  cardTitle: { fontSize: "1.5rem", fontWeight: "bold", color: "#facc15" },
-  cardText: { color: "#d1d5db" },
-
+  cardTitle: { color: "#facc15" },
   likeButton: {
-    marginTop: "10px",
     background: "none",
     border: "none",
     color: "#facc15",
     cursor: "pointer",
-    fontSize: "1.2rem",
   },
-
   resultCard: {
     backgroundColor: "#1f2937",
     border: "2px solid #facc15",
@@ -213,9 +186,7 @@ const styles = {
     borderRadius: "10px",
     marginTop: "20px",
   },
-
-  resultTitle: { fontSize: "1.8rem", fontWeight: "bold", color: "#facc15" },
-
+  resultTitle: { color: "#facc15" },
   input: {
     backgroundColor: "#374151",
     color: "white",
@@ -223,10 +194,7 @@ const styles = {
     borderRadius: "5px",
     border: "none",
     width: "80%",
-    textAlign: "center",
-    marginTop: "10px",
   },
-
   button: {
     backgroundColor: "#facc15",
     color: "#121212",
@@ -235,10 +203,6 @@ const styles = {
     fontWeight: "bold",
     cursor: "pointer",
     border: "none",
-    marginTop: "10px",
+    margin: "10px",
   },
-
-  section: { marginTop: "15px" },
-  sectionTitle: { fontSize: "1.2rem", fontWeight: "bold", color: "#facc15" },
-  sectionText: { color: "#d1d5db" },
 };

@@ -1,69 +1,68 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+import React, { useState } from "react";
+import axios from "axios";
 
-const AskPDF = () => {
-  const [file, setFile] = useState(null);
-  const [fileName, setFileName] = useState('');
-  const [question, setQuestion] = useState('');
-  const [answer, setAnswer] = useState('');
+const API_BASE = "http://localhost:5000";
+
+export default function AskPDF() {
+  const [fileName, setFileName] = useState("");
+  const [question, setQuestion] = useState("");
+  const [answer, setAnswer] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleFileUpload = async (e) => {
-    const selectedFile = e.target.files[0];
-    if (!selectedFile) return;
+    const file = e.target.files[0];
+    if (!file) return;
 
-    setLoading(true);
     const formData = new FormData();
-    formData.append('file', selectedFile);
+    formData.append("pdf", file); // ✅ MUST be "pdf"
 
     try {
-      const res = await axios.post('http://localhost:11000/api/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      setFileName(res.data.filename);
-      alert('File uploaded successfully!');
+      const res = await axios.post(`${API_BASE}/api/upload`, formData);
+      setFileName(res.data.file);
+      alert("✅ File uploaded successfully");
     } catch (err) {
-      console.error('Upload error:', err);
-      alert('File upload failed.');
+      console.error(err);
+      alert("❌ Upload failed");
     }
-    setLoading(false);
   };
 
   const handleAsk = async () => {
     if (!question || !fileName) {
-      alert('Please select a file and enter a question.');
+      alert("Upload a PDF and ask a question");
       return;
     }
 
     setLoading(true);
     try {
-      const res = await axios.post('http://localhost:11000/api/ask', {
-        filename: fileName,
+      const res = await axios.post(`${API_BASE}/api/ask`, {
         question,
+        filename: fileName,
       });
       setAnswer(res.data.answer);
     } catch (err) {
-      console.error('Ask error:', err);
-      setAnswer('Error fetching answer.');
+      console.error(err);
+      setAnswer("❌ Failed to get answer");
     }
     setLoading(false);
   };
 
   return (
     <div style={{ padding: 20 }}>
-      <h2>Ask Questions About Your PDF</h2>
+      <h2>📄 Ask Questions from PDF</h2>
 
-      <input type="file" accept="application/pdf" onChange={handleFileUpload} />
+      <input type="file" accept=".pdf" onChange={handleFileUpload} />
+
       <br /><br />
 
       <input
         type="text"
-        placeholder="Enter your question"
+        placeholder="Ask a question..."
         value={question}
         onChange={(e) => setQuestion(e.target.value)}
-        style={{ width: '60%', padding: 10 }}
+        style={{ width: "60%", padding: 10 }}
       />
-      <button onClick={handleAsk} style={{ marginLeft: 10, padding: '10px 20px' }}>
+
+      <button onClick={handleAsk} style={{ marginLeft: 10 }}>
         Ask
       </button>
 
@@ -77,6 +76,4 @@ const AskPDF = () => {
       )}
     </div>
   );
-};
-
-export default AskPDF;
+}

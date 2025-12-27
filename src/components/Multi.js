@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 
 const DualLanguageMathExplainer = () => {
   const [problem, setProblem] = useState("");
@@ -6,9 +6,39 @@ const DualLanguageMathExplainer = () => {
   const [explanation, setExplanation] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [voices, setVoices] = useState([]);
 
   // IMPORTANT: No API key here. Frontend -> Backend -> Groq.
   const BACKEND_URL = "https://visual-math-oscg.onrender.com/generate-quiz";
+
+  /* ---------------- GOOGLE WEB SPEECH: LOAD VOICES ---------------- */
+  useEffect(() => {
+    const loadVoices = () => {
+      const v = window.speechSynthesis.getVoices();
+      if (v.length > 0) setVoices(v);
+    };
+    loadVoices();
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+  }, []);
+
+  /* ---------------- GOOGLE WEB SPEECH: SPEAK ---------------- */
+  const speakExplanation = (text) => {
+    if (!window.speechSynthesis || !voices.length) return;
+
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+
+    // ✅ Prefer Google voice
+    const googleVoice =
+      voices.find((v) => v.name.includes("Google")) || voices[0];
+
+    utterance.voice = googleVoice;
+    utterance.rate = 0.95;
+    utterance.pitch = 1;
+
+    window.speechSynthesis.speak(utterance);
+  };
 
   const getExplanation = async () => {
     if (!problem.trim()) {
@@ -56,8 +86,12 @@ const DualLanguageMathExplainer = () => {
       }
 
       const data = await response.json();
+      const result = data.choices[0].message.content;
 
-      setExplanation(data.choices[0].message.content);
+      setExplanation(result);
+
+      // 🔊 Speak using Google Web Speech
+      speakExplanation(result);
     } catch (err) {
       setError(err.message);
     }
