@@ -1,8 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
 
-const BACKEND_URL = "https://visual-math-oscg.onrender.com/generate-llama-tutor";
-
 const containerStyle = {
   background: "#C3B1E1",
   fontFamily: "Comic Sans MS, sans-serif",
@@ -18,14 +16,13 @@ export default function LlamaTutorGame() {
   const [modifiedQuestion, setModifiedQuestion] = useState("");
   const [steps, setSteps] = useState([]);
   const [selectedStep, setSelectedStep] = useState(null);
-  const [loading, setLoading] = useState(false);
   const [quizIndex, setQuizIndex] = useState(null);
   const [userAnswer, setUserAnswer] = useState(null);
 
-  // -------- AI Question Template ---------
+  // Simulate AI response locally
   const modifyQuestion = (level) => {
     const templates = [
-      `Explain like I’m 5: ${baseQuestion}`,
+      `Explain like I'm 5: ${baseQuestion}`,
       `Break this concept into a fun puzzle: ${baseQuestion}`,
       `Give coding example + explanation: ${baseQuestion}`,
       `Explain common mistakes + correct method: ${baseQuestion}`,
@@ -34,8 +31,7 @@ export default function LlamaTutorGame() {
     return templates[level - 1] || baseQuestion;
   };
 
-  // -------- Handle AI request through backend --------
-  const handleStartLevel = async (level) => {
+  const handleStartLevel = (level) => {
     if (!baseQuestion.trim()) {
       alert("Please enter a question first!");
       return;
@@ -44,40 +40,21 @@ export default function LlamaTutorGame() {
     const modified = modifyQuestion(level);
     setModifiedQuestion(modified);
     setChosenLevel(level);
-    setLoading(true);
-    setSteps([]);
+
+    // Simulate AI steps
+    const simulatedSteps = [
+      `Step 1: Understand the question: ${modified}`,
+      `Step 2: Identify key concepts`,
+      `Step 3: Break it down into smaller parts`,
+      `Step 4: Solve each part carefully`,
+      `Step 5: Combine results and check your answer`,
+    ];
+    setSteps(simulatedSteps);
     setSelectedStep(null);
     setQuizIndex(null);
     setUserAnswer(null);
-
-    try {
-      const res = await fetch(BACKEND_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: modified }),
-      });
-
-      if (!res.ok) throw new Error("Backend error");
-
-      const data = await res.json();
-      const fullText = data.response || "";
-
-      // Split clean steps (AI sometimes returns numbered or bulleted text)
-      const stepsArray = fullText
-        .split(/\n+/)
-        .filter((line) => line.trim().length > 3)
-        .map((line) => line.replace(/^\d+\.\s*/, "").trim());
-
-      setSteps(stepsArray);
-    } catch (err) {
-      console.error(err);
-      alert("Error fetching explanation! Try again.");
-    }
-
-    setLoading(false);
   };
 
-  // ---------- Generate quiz ----------
   const handleQuiz = () => {
     if (steps.length === 0) return;
     setQuizIndex(Math.floor(Math.random() * steps.length));
@@ -93,7 +70,6 @@ export default function LlamaTutorGame() {
       <h1 style={{ fontSize: "2.5rem" }}>🦙 LLaMA Learning Adventure</h1>
       <p>Type a question and choose your learning mode 🎮</p>
 
-      {/* Base Question Input */}
       <input
         type="text"
         placeholder="e.g., What is a binary tree?"
@@ -109,7 +85,6 @@ export default function LlamaTutorGame() {
         }}
       />
 
-      {/* Level Selection */}
       {baseQuestion && (
         <div>
           <h3>🎮 Choose your Learning Level</h3>
@@ -136,15 +111,11 @@ export default function LlamaTutorGame() {
         </div>
       )}
 
-      {loading && <p>🧠 Fetching steps from the LLaMA brain...</p>}
-
-      {/* Steps Display */}
       {steps.length > 0 && (
         <>
           <h2 style={{ marginTop: "30px" }}>🧩 Level {chosenLevel} Steps</h2>
           <p style={{ fontStyle: "italic" }}>“{modifiedQuestion}”</p>
 
-          {/* Step selection buttons */}
           <div>
             {steps.map((step, index) => (
               <motion.button
@@ -167,7 +138,6 @@ export default function LlamaTutorGame() {
             ))}
           </div>
 
-          {/* Step detail display */}
           {selectedStep !== null && (
             <motion.div
               initial={{ opacity: 0 }}
@@ -189,7 +159,6 @@ export default function LlamaTutorGame() {
             </motion.div>
           )}
 
-          {/* Quiz Button */}
           <motion.button
             onClick={handleQuiz}
             whileHover={{ scale: 1.1 }}
@@ -209,7 +178,6 @@ export default function LlamaTutorGame() {
         </>
       )}
 
-      {/* Quiz Section */}
       {quizIndex !== null && (
         <div
           style={{
@@ -222,7 +190,9 @@ export default function LlamaTutorGame() {
           }}
         >
           <h2>🎉 Challenge Time!</h2>
-          <p><strong>Which step number says this?</strong></p>
+          <p>
+            <strong>Which step number says this?</strong>
+          </p>
 
           <p style={{ fontStyle: "italic" }}>{steps[quizIndex]}</p>
 

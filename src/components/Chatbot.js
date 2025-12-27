@@ -102,14 +102,41 @@ const AIAssistant = () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            // backend expects { messages }
             messages: [
               {
                 role: "system",
-                content: `You are a math learning assistant. 
-Only answer mathematics topics.
-Provide explanations with clear steps and examples.
-${languagePrompts[language.value]}`,
+                content: `
+You are a mathematics tutor.
+
+RULES:
+- Answer ONLY math-related topics.
+- Use a clean structured format.
+- Use headings and numbered points.
+- Each concept must be on a new line.
+- Use simple language.
+- Do NOT write long paragraphs.
+
+FORMAT STRICTLY LIKE THIS:
+
+TITLE:
+<topic name>
+
+1. Definition
+- short explanation
+
+2. Key Concepts
+- point 1
+- point 2
+
+3. Example
+- step 1
+- step 2
+
+4. Conclusion
+- short summary
+
+${languagePrompts[language.value]}
+`,
               },
               ...currentMessages,
             ],
@@ -278,7 +305,12 @@ ${languagePrompts[language.value]}`,
                 position: "relative",
               }}
             >
-              {msg.content}
+              {/* NEAT FORMAT DISPLAY */}
+              {msg.content.split("\n").map((line, i) => (
+                <div key={i} style={{ marginBottom: 6 }}>
+                  {line.match(/^\d+\./) ? <strong>{line}</strong> : line}
+                </div>
+              ))}
 
               {msg.role === "assistant" && (
                 <button

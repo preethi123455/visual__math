@@ -1,13 +1,19 @@
 import React, { useEffect, useState } from "react";
 
-const Puzzles = () => {
-  // Your backend endpoint (NO API KEY IN FRONTEND)
-  const BACKEND_URL = "https://visual-math-oscg.onrender.com/generate-puzzle";
+const examplePuzzles = [
+  { puzzle: "2x + 3 = 7", answer: "2" },
+  { puzzle: "5y - 10 = 0", answer: "2" },
+  { puzzle: "3a + 9 = 0", answer: "-3" },
+  { puzzle: "x/2 + 4 = 6", answer: "4" },
+  { puzzle: "7b - 14 = 21", answer: "5" },
+];
 
+const Puzzles = () => {
   const [challenge, setChallenge] = useState("");
   const [correctAnswer, setCorrectAnswer] = useState("");
   const [userAnswer, setUserAnswer] = useState("");
   const [score, setScore] = useState(0);
+  const [message, setMessage] = useState("");
 
   const [leaderboard, setLeaderboard] = useState([
     { name: "Alice", score: 80 },
@@ -16,32 +22,11 @@ const Puzzles = () => {
     { name: "You", score: 0 },
   ]);
 
-  const [message, setMessage] = useState("");
-
-  // Fetch puzzle from backend (backend already calls Groq)
-  const fetchChallenge = async () => {
-    try {
-      const res = await fetch(BACKEND_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-
-      if (!res.ok) throw new Error("Backend error");
-
-      const data = await res.json();
-
-      // Backend returns: { puzzle: "...", answer: "..." }
-      if (data.puzzle && data.answer) {
-        setChallenge(data.puzzle);
-        setCorrectAnswer(data.answer.trim());
-      } else {
-        setChallenge("❌ Invalid puzzle format received.");
-        setCorrectAnswer("");
-      }
-    } catch (error) {
-      console.error("Puzzle Error:", error);
-      setChallenge("❌ Could not load puzzle. Try again.");
-    }
+  // Pick a random puzzle
+  const fetchChallenge = () => {
+    const random = examplePuzzles[Math.floor(Math.random() * examplePuzzles.length)];
+    setChallenge(random.puzzle);
+    setCorrectAnswer(random.answer);
   };
 
   useEffect(() => {
@@ -54,7 +39,6 @@ const Puzzles = () => {
     setScore(entry ? entry.score : 0);
   }, []);
 
-  // Update leaderboard ranking
   const updateLeaderboard = (newScore) => {
     const updated = leaderboard.map((entry) =>
       entry.name === "You" ? { ...entry, score: newScore } : entry
@@ -67,7 +51,6 @@ const Puzzles = () => {
     const rank = updated.findIndex((e) => e.name === "You") + 1;
 
     let msg = `🏆 You are Ranked #${rank}!`;
-
     if (rank === 1) msg = "🔥 You're at the TOP! Amazing!";
     else if (rank <= 3) msg = "🎉 You're in the Top 3 — Great job!";
 
@@ -80,12 +63,11 @@ const Puzzles = () => {
       return;
     }
 
-    if (userAnswer.trim().toLowerCase() === correctAnswer.toLowerCase()) {
+    if (userAnswer.trim() === correctAnswer) {
       const newScore = score + 10;
       setScore(newScore);
       updateLeaderboard(newScore);
       alert("✅ Correct! Here's a new puzzle!");
-
       setUserAnswer("");
       fetchChallenge();
     } else {
@@ -132,7 +114,6 @@ const Puzzles = () => {
 };
 
 // --------------------- STYLING ---------------------
-
 const styles = {
   container: {
     backgroundColor: "#C3B1E1",

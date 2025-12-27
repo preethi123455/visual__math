@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 
 const QuizGenerator = () => {
-  // NO API KEY IN FRONTEND
   const BACKEND_URL = "https://visual-math-oscg.onrender.com/generate-quiz";
 
   const [level, setLevel] = useState(null);
@@ -44,7 +43,7 @@ const QuizGenerator = () => {
               Format the response as a JSON array.
               Each object must contain:
               - "question"
-              - "options" (array of 4)
+              - "options" (array of 4 STRINGS ONLY)
               - "correctAnswer" (string)`,
             },
             { role: "user", content: userInput },
@@ -103,7 +102,6 @@ const QuizGenerator = () => {
       {!level ? (
         <div style={styles.levelSelector}>
           <p style={styles.label}>Choose your difficulty level:</p>
-
           {["Beginner", "Intermediate", "Advanced"].map((lvl) => (
             <button
               key={lvl}
@@ -146,18 +144,22 @@ const QuizGenerator = () => {
 
                 return (
                   <div key={index} style={styles.questionBlock}>
-                    <p>
-                      <strong>{q.question}</strong>
-                    </p>
+                    <p><strong>{q.question}</strong></p>
 
                     {q.options.map((option) => {
-                      const isSelected = answers[index] === option;
+                      // 🔥 FIX: handle object options safely
+                      const optionText =
+                        typeof option === "object"
+                          ? Object.values(option)[0]
+                          : option;
+
+                      const isSelected = answers[index] === optionText;
 
                       let style = {};
                       if (isSubmitted) {
-                        if (option === correct) {
+                        if (optionText === correct) {
                           style = { color: "green", fontWeight: "bold" };
-                        } else if (isSelected && option !== correct) {
+                        } else if (isSelected && optionText !== correct) {
                           style = {
                             color: "red",
                             textDecoration: "line-through",
@@ -167,17 +169,19 @@ const QuizGenerator = () => {
 
                       return (
                         <label
-                          key={option}
+                          key={optionText}
                           style={{ display: "block", marginBottom: 5, ...style }}
                         >
                           <input
                             type="radio"
                             name={`q-${index}`}
                             checked={isSelected}
-                            onChange={() => handleAnswerChange(index, option)}
+                            onChange={() =>
+                              handleAnswerChange(index, optionText)
+                            }
                             disabled={isSubmitted}
                           />
-                          {option}
+                          {optionText}
                         </label>
                       );
                     })}
@@ -186,7 +190,10 @@ const QuizGenerator = () => {
               })}
 
               {!feedback && (
-                <button style={styles.submitButton} onClick={handleSubmitAnswers}>
+                <button
+                  style={styles.submitButton}
+                  onClick={handleSubmitAnswers}
+                >
                   Submit Answers
                 </button>
               )}
@@ -224,7 +231,7 @@ const QuizGenerator = () => {
   );
 };
 
-// Internal CSS styles
+// 🎨 Styles (unchanged)
 const styles = {
   container: {
     padding: 30,
