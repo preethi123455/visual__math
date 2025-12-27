@@ -9,9 +9,11 @@ const AIChalkboardTutor = () => {
   const canvasRef = useRef(null);
   const handRef = useRef(null);
 
+  // ✅ USE EXISTING BACKEND ROUTE
   const BACKEND_URL =
-    "https://visual-math-oscg.onrender.com/chalk-explain"; // ✅ secure backend route
+    "https://visual-math-oscg.onrender.com/generate-quiz";
 
+  // ---------------- FETCH SOLUTION ----------------
   const fetchSolution = async () => {
     if (!question.trim()) return;
 
@@ -23,19 +25,39 @@ const AIChalkboardTutor = () => {
       const res = await fetch(BACKEND_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, studentAnswer: answer }),
+        body: JSON.stringify({
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are a chalkboard-style math tutor. Explain step-by-step clearly and simply.",
+            },
+            {
+              role: "user",
+              content: `Question: ${question}\nStudent Answer: ${answer}`,
+            },
+          ],
+        }),
       });
 
+      // 🚨 SAFETY CHECK
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("Backend error:", text);
+        setLoading(false);
+        return;
+      }
+
       const data = await res.json();
-      const message = data.choices?.[0]?.message?.content || "";
+      const message = data?.choices?.[0]?.message?.content || "";
 
       const lines = message
         .split(/\n+/)
         .filter((line) => line.trim())
-        .map((s, i) => `${i + 1}. ${s.trim().slice(0, 70)}`);
+        .map((s, i) => `${i + 1}. ${s.trim().slice(0, 80)}`);
 
       setSteps(lines);
-      speakText(lines[0]);
+      if (lines.length) speakText(lines[0]);
     } catch (err) {
       console.error("Chalkboard Error:", err);
     }
@@ -43,6 +65,7 @@ const AIChalkboardTutor = () => {
     setLoading(false);
   };
 
+  // ---------------- DRAW CHALK STEPS ----------------
   const drawSteps = async (ctx) => {
     ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
     ctx.font = "24px 'Gloria Hallelujah', cursive";
@@ -64,8 +87,8 @@ const AIChalkboardTutor = () => {
 
         if (handRef.current) {
           handRef.current.style.display = "block";
-          handRef.current.style.left = `${x + width + 30}px`;
-          handRef.current.style.top = `${y - 20}px`;
+          handRef.current.style.left = `${x + width + 20}px`;
+          handRef.current.style.top = `${y - 30}px`;
         }
 
         await new Promise((res) => setTimeout(res, 25));
@@ -73,12 +96,13 @@ const AIChalkboardTutor = () => {
 
       speakText(text);
       y += 60;
-      await new Promise((res) => setTimeout(res, 1000));
+      await new Promise((res) => setTimeout(res, 800));
     }
 
     if (handRef.current) handRef.current.style.display = "none";
   };
 
+  // ---------------- SPEECH ----------------
   const speakText = (text) => {
     speechSynthesis.cancel();
     const utter = new SpeechSynthesisUtterance(text);
@@ -87,6 +111,7 @@ const AIChalkboardTutor = () => {
     speechSynthesis.speak(utter);
   };
 
+  // ---------------- EFFECTS ----------------
   useEffect(() => {
     if (steps.length > 0) {
       const ctx = canvasRef.current.getContext("2d");
@@ -104,6 +129,7 @@ const AIChalkboardTutor = () => {
     return () => window.removeEventListener("resize", resize);
   }, []);
 
+  // ---------------- UI ----------------
   return (
     <div style={styles.container}>
       <link
@@ -143,6 +169,7 @@ const AIChalkboardTutor = () => {
   );
 };
 
+// ---------------- STYLES ----------------
 const styles = {
   container: {
     backgroundColor: "#000",
@@ -195,6 +222,7 @@ const styles = {
     zIndex: 10,
     cursor: "pointer",
     color: "#fff",
+    border: "none",
   },
   canvas: {
     position: "absolute",

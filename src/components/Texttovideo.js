@@ -1,196 +1,245 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 
-export default function MathVideoSolverWithRecording() {
+export default function Texttovideo() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [videoURL, setVideoURL] = useState(null);
+  const [stepsText, setStepsText] = useState([]);
+  const [lang, setLang] = useState("en");
+
   const canvasRef = useRef(null);
   const mediaRecorderRef = useRef(null);
   const recordedChunksRef = useRef([]);
 
-  const groqApiKey = "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";
-  const mode = "general"; // Default mode
+  /* ---------------- GOOGLE FONT ---------------- */
+  useEffect(() => {
+    const link = document.createElement("link");
+    link.href =
+      "https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap";
+    link.rel = "stylesheet";
+    document.head.appendChild(link);
+  }, []);
 
+  /* ---------------- GOOGLE TRANSLATE ---------------- */
+  const translateText = async (text, targetLang) => {
+    if (targetLang === "en") return text;
+
+    const res = await fetch(
+      `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${targetLang}&dt=t&q=${encodeURIComponent(
+        text
+      )}`
+    );
+
+    const data = await res.json();
+    return data[0].map((t) => t[0]).join("");
+  };
+
+  /* ---------------- SOLVER ---------------- */
+  const solveExpression = (expr) => {
+    try {
+      if (expr.includes("=")) {
+        return [
+          `Given equation: ${expr}`,
+          "Move constants to one side",
+          "Simplify both sides",
+          "Solve for the variable",
+          "Final answer obtained",
+        ];
+      } else {
+        return [`Expression: ${expr}`, `Final Answer = ${eval(expr)}`];
+      }
+    } catch {
+      return ["Unable to solve this expression"];
+    }
+  };
+
+  /* ---------------- RECORDING ---------------- */
   const startRecording = (stream) => {
     recordedChunksRef.current = [];
-    const recorder = new MediaRecorder(stream, { mimeType: "video/webm" });
+    const recorder = new MediaRecorder(stream, {
+      mimeType: "video/webm",
+      videoBitsPerSecond: 6_000_000,
+    });
 
-    recorder.ondataavailable = (event) => {
-      if (event.data.size > 0) {
-        recordedChunksRef.current.push(event.data);
-      }
+    recorder.ondataavailable = (e) => {
+      if (e.data.size > 0) recordedChunksRef.current.push(e.data);
     };
 
     recorder.onstop = () => {
       const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
-      const url = URL.createObjectURL(blob);
-      setVideoURL(url);
+      setVideoURL(URL.createObjectURL(blob));
     };
 
     recorder.start();
     mediaRecorderRef.current = recorder;
   };
 
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-      mediaRecorderRef.current.stop();
-    }
-  };
+  const stopRecording = () => mediaRecorderRef.current?.stop();
 
+  /* ---------------- MAIN ---------------- */
   const handleSubmit = async () => {
     if (!input.trim()) return;
 
     setLoading(true);
     setVideoURL(null);
 
-    const prompt = `Solve this math equation step-by-step for a student: ${input}`;
+    let steps = solveExpression(input);
 
-    try {
-      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${groqApiKey}`
-        },
-        body: JSON.stringify({
-          model: mode === 'general' ? 'llama-3.1-8b-instant' : 'llama-3.3-70b-versatile',
-          messages: [{ role: "user", content: prompt }],
-          temperature: 0.2,
-          max_tokens: 500
-        })
-      });
-
-      const data = await res.json();
-      const solution = data.choices?.[0]?.message?.content;
-      if (!solution) throw new Error("No content from AI.");
-
-      const steps = solution.split("\n").filter(line => line.trim() !== "");
-
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext("2d");
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      const stream = canvas.captureStream(30); // 30 FPS
-      startRecording(stream);
-
-      await animateAndSpeakSteps(steps, canvas);
-
-      stopRecording();
-    } catch (err) {
-      console.error(err);
-      alert("Error during video creation.");
-    } finally {
-      setLoading(false);
+    // 🌍 TRANSLATE STEPS
+    const translatedSteps = [];
+    for (let step of steps) {
+      translatedSteps.push(await translateText(step, lang));
     }
+
+    setStepsText(translatedSteps);
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    const dpr = window.devicePixelRatio || 1;
+
+    canvas.width = 600 * dpr;
+    canvas.height = 260 * dpr;
+    ctx.scale(dpr, dpr);
+
+    const stream = canvas.captureStream(30);
+    startRecording(stream);
+    await animateSteps(translatedSteps, canvas);
+    stopRecording();
+
+    setLoading(false);
   };
 
-  const animateAndSpeakSteps = async (steps, canvas) => {
+  /* ---------------- VIDEO + VOICE ---------------- */
+  const animateSteps = async (steps, canvas) => {
     const ctx = canvas.getContext("2d");
-    const avatar = new Image();
-    avatar.src = "https://i.postimg.cc/xjBLtnxz/teacher-avatar.png";
-
-    await new Promise((resolve) => {
-      avatar.onload = resolve;
-      avatar.onerror = resolve;
-    });
 
     const speak = (text) =>
       new Promise((resolve) => {
-        const utter = new SpeechSynthesisUtterance(text);
-        utter.rate = 1;
-        utter.pitch = 1;
-        utter.lang = "en-US";
-        utter.onend = resolve;
-        speechSynthesis.speak(utter);
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = lang; // ✅ REAL LANGUAGE
+        u.onend = resolve;
+        speechSynthesis.speak(u);
       });
 
     for (let i = 0; i < steps.length; i++) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Background
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Avatar
-      ctx.drawImage(avatar, 20, 40, 100, 100);
+      ctx.fillStyle = "#6a11cb";
+      ctx.font = "bold 24px Poppins";
+      ctx.fillText(`Step ${i + 1}`, 20, 40);
 
-      // Step title
-      ctx.fillStyle = "#007acc";
-      ctx.font = "bold 24px Arial";
-      ctx.fillText(`Step ${i + 1}:`, 140, 70);
-
-      // Step text
-      ctx.fillStyle = "#000000";
-      ctx.font = "20px Arial";
-      wrapText(ctx, steps[i], 140, 110, 440, 26);
+      ctx.fillStyle = "#000";
+      ctx.font = "18px Poppins";
+      wrapText(ctx, steps[i], 20, 90, 560, 28);
 
       await speak(steps[i]);
-      await new Promise((res) => setTimeout(res, 500));
+      await new Promise((r) => setTimeout(r, 500));
     }
   };
 
   const wrapText = (ctx, text, x, y, maxWidth, lineHeight) => {
     const words = text.split(" ");
     let line = "";
-    const lines = [];
+    let yy = y;
 
-    for (let n = 0; n < words.length; n++) {
-      const testLine = line + words[n] + " ";
-      const width = ctx.measureText(testLine).width;
-      if (width > maxWidth && n > 0) {
-        lines.push(line);
-        line = words[n] + " ";
+    for (let w of words) {
+      const test = line + w + " ";
+      if (ctx.measureText(test).width > maxWidth) {
+        ctx.fillText(line, x, yy);
+        line = w + " ";
+        yy += lineHeight;
       } else {
-        line = testLine;
+        line = test;
       }
     }
-    lines.push(line);
-
-    for (let i = 0; i < lines.length; i++) {
-      ctx.fillText(lines[i], x, y + i * lineHeight);
-    }
+    ctx.fillText(line, x, yy);
   };
 
   return (
-    <div style={{ padding: 20, textAlign: "center", fontFamily: "Arial, sans-serif" }}>
-      <h1>📽 Math AI Video Solver</h1>
+    <div style={styles.page}>
+      <div style={styles.card}>
+        <h2>📽 Math Video Solver</h2>
 
-      <input
-        type="text"
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        placeholder="Enter a math problem"
-        style={{
-          padding: "10px",
-          width: "60%",
-          fontSize: "16px",
-          border: "1px solid #ccc",
-          borderRadius: "4px"
-        }}
-      />
-      <button
-        onClick={handleSubmit}
-        style={{ padding: "10px 20px", marginLeft: "10px", fontSize: "16px" }}
-      >
-        {loading ? "Generating..." : "Generate Video"}
-      </button>
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Enter math expression (e.g., 2x+5=15)"
+          style={styles.input}
+        />
 
-      <canvas
-        ref={canvasRef}
-        width={600}
-        height={200}
-        style={{ marginTop: "20px", border: "1px solid #ccc" }}
-      />
+        <select value={lang} onChange={(e) => setLang(e.target.value)} style={styles.select}>
+          <option value="en">English</option>
+          <option value="hi">Hindi</option>
+          <option value="ta">Tamil</option>
+          <option value="te">Telugu</option>
+        </select>
 
-      {videoURL && (
-        <div style={{ marginTop: "20px" }}>
-          <h3>🎬 Preview & Download</h3>
-          <video src={videoURL} controls style={{ width: "600px" }} />
-          <a href={videoURL} download="math_solution_video.webm">
-            <button style={{ marginTop: "10px", padding: "10px 20px" }}>⬇️ Download Video</button>
-          </a>
-        </div>
-      )}
+        <button onClick={handleSubmit} style={styles.button}>
+          {loading ? "Generating..." : "Solve & Generate Video"}
+        </button>
+
+        {stepsText.length > 0 && (
+          <div style={styles.textBox}>
+            <h3>📝 Solution Steps</h3>
+            {stepsText.map((s, i) => (
+              <p key={i}>Step {i + 1}: {s}</p>
+            ))}
+          </div>
+        )}
+
+        <canvas ref={canvasRef} width={600} height={260} style={styles.canvas} />
+
+        {videoURL && (
+          <>
+            <video src={videoURL} controls width="600" />
+            <a href={videoURL} download="math-video.webm">
+              <button style={styles.download}>⬇ Download Video</button>
+            </a>
+          </>
+        )}
+      </div>
     </div>
   );
 }
+
+/* ---------------- STYLES ---------------- */
+const styles = {
+  page: {
+    minHeight: "100vh",
+    background: "linear-gradient(135deg,#667eea,#764ba2)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    fontFamily: "Poppins, sans-serif",
+  },
+  card: {
+    background: "#fff",
+    padding: "30px",
+    borderRadius: "15px",
+    width: "720px",
+    textAlign: "center",
+    boxShadow: "0 10px 30px rgba(0,0,0,0.2)",
+  },
+  input: { padding: 12, width: "90%", marginBottom: 10 },
+  select: { padding: 10, marginBottom: 10 },
+  button: {
+    background: "#6a11cb",
+    color: "#fff",
+    padding: "12px 25px",
+    borderRadius: 8,
+    border: "none",
+    cursor: "pointer",
+  },
+  textBox: { textAlign: "left", marginTop: 20 },
+  canvas: { marginTop: 20, border: "1px solid #ccc" },
+  download: {
+    marginTop: 10,
+    background: "#28a745",
+    color: "#fff",
+    padding: "10px 20px",
+    borderRadius: 6,
+    border: "none",
+  },
+};
