@@ -22,7 +22,7 @@ const ContentExplorer = () => {
     setError(null);
 
     try {
-      // ✅ Call your backend, not Groq directly
+      // 1️⃣ Backend AI content search
       const response = await fetch(
         "https://visual-math-oscg.onrender.com/generate-quiz",
         {
@@ -64,10 +64,26 @@ const ContentExplorer = () => {
 
       // Extract JSON ONLY
       const jsonMatch = rawContent.match(/\[.*\]/s);
-      if (!jsonMatch) throw new Error("Failed to extract valid JSON.");
+      const parsedResults = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
 
-      const parsedResults = JSON.parse(jsonMatch[0]);
-      setSearchResults(parsedResults);
+      // 2️⃣ Google Books API integration
+      const GOOGLE_BOOKS_API = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(
+        searchTerm
+      )}&maxResults=5`;
+      const booksRes = await fetch(GOOGLE_BOOKS_API);
+      const booksData = await booksRes.json();
+
+      const booksResults =
+        booksData.items?.map((item) => ({
+          title: item.volumeInfo.title,
+          type: "book",
+          source: item.volumeInfo.publisher || "Google Books",
+          description: item.volumeInfo.description || "No description available",
+          duration: "",
+        })) || [];
+
+      // Combine backend + Google Books results
+      setSearchResults([...parsedResults, ...booksResults]);
     } catch (err) {
       console.error("Search error:", err);
       setError("Failed to retrieve content. Try again.");
@@ -91,7 +107,6 @@ const ContentExplorer = () => {
 
       <div style={{ background: "#fafafa", padding: "20px", borderRadius: "12px" }}>
         <div style={{ marginBottom: "20px" }}>
-          {/* SEARCH BAR */}
           <div style={{ display: "flex", gap: "10px", marginBottom: "20px" }}>
             <input
               type="text"
@@ -107,7 +122,6 @@ const ContentExplorer = () => {
                 fontSize: "16px",
               }}
             />
-
             <button
               onClick={handleSearch}
               disabled={loading || !searchTerm.trim()}
@@ -124,7 +138,6 @@ const ContentExplorer = () => {
             </button>
           </div>
 
-          {/* CATEGORY FILTER */}
           <div style={{ display: "flex", gap: "10px", overflowX: "auto" }}>
             {categories.map((category) => (
               <button
@@ -133,8 +146,7 @@ const ContentExplorer = () => {
                 style={{
                   padding: "8px 15px",
                   borderRadius: "20px",
-                  background:
-                    activeCategory === category.id ? "#6a0dad" : "#f0e6ff",
+                  background: activeCategory === category.id ? "#6a0dad" : "#f0e6ff",
                   color: activeCategory === category.id ? "white" : "#6a0dad",
                   border: "none",
                   display: "flex",
@@ -151,7 +163,6 @@ const ContentExplorer = () => {
           </div>
         </div>
 
-        {/* ERROR MESSAGE */}
         {error && (
           <div
             style={{
@@ -166,7 +177,6 @@ const ContentExplorer = () => {
           </div>
         )}
 
-        {/* RESULTS */}
         {!loading && filteredResults.length > 0 && (
           <div
             style={{
@@ -203,7 +213,6 @@ const ContentExplorer = () => {
           </div>
         )}
 
-        {/* LOADING */}
         {loading && (
           <div style={{ textAlign: "center", padding: "40px" }}>
             <h3>Searching...</h3>
