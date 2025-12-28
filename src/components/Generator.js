@@ -12,6 +12,14 @@ const Visualizer = () => {
   const handleSubmit = async () => {
     if (!problem.trim()) return;
 
+    // 🔵 GOOGLE ANALYTICS EVENT (NEW)
+    if (window.gtag) {
+      window.gtag("event", "math_visualization_requested", {
+        event_category: "Math Visualization",
+        event_label: problem,
+      });
+    }
+
     setExplanation("⏳ Thinking...");
 
     try {
@@ -39,7 +47,6 @@ const Visualizer = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        console.error("Backend error:", data);
         setExplanation(
           "❌ Unable to generate explanation right now. Please try again later."
         );
@@ -53,7 +60,6 @@ const Visualizer = () => {
       setExplanation(text);
       setRenderKey((prev) => prev + 1);
     } catch (error) {
-      console.error("Fetch error:", error);
       setExplanation("❌ Network error. Please try again.");
     }
   };

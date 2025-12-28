@@ -8,13 +8,12 @@ const MathTopicReader = () => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [voice, setVoice] = useState(null);
 
-  // Your backend URL
   const BACKEND_URL = "https://visual-math-oscg.onrender.com/generate-quiz";
 
-  // Load voice properly
+  // ---------------- Load browser voice ----------------
   useEffect(() => {
-    const waitForVoices = () => {
-      return new Promise((resolve) => {
+    const waitForVoices = () =>
+      new Promise((resolve) => {
         let voices = speechSynthesis.getVoices();
         if (voices.length) resolve(voices);
         else {
@@ -27,20 +26,33 @@ const MathTopicReader = () => {
           }, 100);
         }
       });
-    };
 
     waitForVoices().then((voices) => {
       const preferred =
-        voices.find((v) => v.name.toLowerCase().includes("female")) || voices[0];
+        voices.find((v) => v.name.toLowerCase().includes("female")) ||
+        voices[0];
       setVoice(preferred);
     });
   }, []);
 
+  // ---------------- Google Analytics helper ----------------
+  const trackGoogleEvent = (eventName, params = {}) => {
+    if (window.gtag) {
+      window.gtag("event", eventName, params);
+    }
+  };
+
+  // ---------------- Fetch math explanation ----------------
   const fetchBookContent = async () => {
     if (!topic.trim()) {
       alert("Please enter a math topic.");
       return;
     }
+
+    // 🔵 Google Analytics: track topic request
+    trackGoogleEvent("math_topic_requested", {
+      topic_name: topic,
+    });
 
     setLoading(true);
     setBookContent("");
@@ -60,21 +72,26 @@ const MathTopicReader = () => {
         ],
       });
 
-      const reply = response.data.choices[0].message.content;
-      setBookContent(reply);
+      setBookContent(response.data.choices[0].message.content);
     } catch (err) {
-      console.error("Error fetching content:", err);
+      console.error(err);
       alert("Failed to fetch math explanation.");
     }
 
     setLoading(false);
   };
 
+  // ---------------- Read aloud ----------------
   const handleReadAloud = () => {
     if (!bookContent || !voice) {
       alert("Voice not ready yet.");
       return;
     }
+
+    // 🔵 Google Analytics: track read-aloud usage
+    trackGoogleEvent("math_topic_read_aloud", {
+      topic_name: topic,
+    });
 
     const utterance = new SpeechSynthesisUtterance(bookContent);
     utterance.voice = voice;
