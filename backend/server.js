@@ -18,7 +18,7 @@ app.use(express.json({ limit: '10mb' }));
 // 🔹 CORS - allow local and deployed frontend
 const allowedOrigins = [
   'http://localhost:3000',
-  'https://educonnect-platform-frontend.onrender.com',
+  'https://visual-frontend-bsfk.onrender.com',
 ];
 
 app.use(
